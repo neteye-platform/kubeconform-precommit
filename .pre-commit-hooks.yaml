@@ -1,0 +1,13 @@
+- id: kubeconform
+  name: Kubeconform
+  description: Validate Kubernetes manifests with kubeconform
+  entry: kubeconform-precommit
+  language: python
+  types: [yaml]
+
+- id: kubeconform-kustomize
+  name: Kubeconform (Kustomize)
+  description: Validate Kustomize overlays with kubeconform
+  entry: kubeconform-precommit --kustomize
+  language: python
+  pass_filenames: false

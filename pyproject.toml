@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kubeconform-precommit"
+version = "0.1.0"
+requires-python = ">=3.9"
+
+[project.scripts]
+kubeconform-precommit = "hooks.kubeconform_precommit:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hooks"]
