@@ -1,0 +1,15 @@
+name: Common Manual Checks
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  common-manual-checks:
+    uses: neteye-platform/repo-commons/.github/workflows/common-manual-checks.yaml@main
+    secrets: inherit

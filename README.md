@@ -1,11 +1,14 @@
-# kubeconform-precommit
+# Kubeconform Pre-Commit
 
-A [pre-commit](https://pre-commit.com/) hook to validate Kubernetes manifests using [kubeconform](https://github.com/yannh/kubeconform).
+A [pre-commit](https://pre-commit.com/) hook to validate Kubernetes manifests
+using [kubeconform](https://github.com/yannh/kubeconform).
 
 ## Prerequisites
 
-- [kubeconform](https://github.com/yannh/kubeconform) installed and available on `PATH`
-- [kustomize](https://github.com/kubernetes-sigs/kustomize) (only if using the kustomize hook)
+- [kubeconform](https://github.com/yannh/kubeconform) installed and
+  available on `PATH`
+- [kustomize](https://github.com/kubernetes-sigs/kustomize)
+  (only if using the kustomize hook)
 
 ## Usage
 
@@ -21,7 +24,8 @@ repos:
 
 ### Kustomize mode
 
-To validate kustomize overlays, use the `kubeconform-kustomize` hook and pass the overlay paths via `args`:
+To validate kustomize overlays, use the `kubeconform-kustomize` hook and pass
+the overlay paths via `args`:
 
 ```yaml
 repos:
