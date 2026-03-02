@@ -6,13 +6,20 @@ import shutil
 import subprocess
 import sys
 
+
 def require_kubeconform() -> None:
     if not shutil.which("kubeconform"):
-        sys.exit("kubeconform not found on PATH. Install it from https://github.com/yannh/kubeconform")
+        sys.exit(
+            "kubeconform not found on PATH. Install it from https://github.com/yannh/kubeconform"
+        )
+
 
 def require_kustomize() -> None:
     if not shutil.which("kustomize"):
-        sys.exit("kustomize not found on PATH. Install it from https://github.com/kubernetes-sigs/kustomize")
+        sys.exit(
+            "kustomize not found on PATH. Install it from https://github.com/kubernetes-sigs/kustomize"
+        )
+
 
 def expand_glob(files: list[str]) -> list[str]:
     expanded = []
@@ -24,8 +31,10 @@ def expand_glob(files: list[str]) -> list[str]:
             expanded.append(pattern)
     return expanded
 
+
 def kustomize_build(path: str) -> subprocess.CompletedProcess:
     return subprocess.run(["kustomize", "build", path], capture_output=True, text=True)
+
 
 def _kubeconform_cmd(extra_args: str) -> list[str]:
     cmd = ["kubeconform"]
@@ -33,11 +42,13 @@ def _kubeconform_cmd(extra_args: str) -> list[str]:
         cmd.extend(extra_args.split())
     return cmd
 
+
 def kubeconform(files: list[str], extra_args="") -> int:
     cmd = _kubeconform_cmd(extra_args)
     cmd.extend(files)
     result = subprocess.run(cmd)
     return result.returncode
+
 
 def kubeconform_kustomize(files: list[str], extra_args="") -> int:
     cmd = _kubeconform_cmd(extra_args)
@@ -73,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
         "-k",
         "--kustomize",
         action="store_true",
-        help="Whether to activate the kustomization mode or not"
+        help="Whether to activate the kustomization mode or not",
     )
     args = parser.parse_args(argv)
 
@@ -89,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         return kubeconform_kustomize(files, extra_args=args.kubeconform_args)
 
     return kubeconform(files, extra_args=args.kubeconform_args)
-    
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
