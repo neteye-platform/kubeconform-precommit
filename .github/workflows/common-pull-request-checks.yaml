@@ -5,11 +5,7 @@ on:
     branches:
       - "*"
 
-permissions:
-  actions: write
-  contents: write
-  issues: write
-  pull-requests: write
+permissions: write-all
 
 jobs:
   common-pull-request-checks:

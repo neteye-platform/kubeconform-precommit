@@ -3,11 +3,7 @@ name: Common Manual Checks
 on:
   workflow_dispatch:
 
-permissions:
-  actions: write
-  contents: write
-  issues: write
-  pull-requests: write
+permissions: write-all
 
 jobs:
   common-manual-checks:
