@@ -4,11 +4,7 @@ on:
   schedule:
     - cron: "0 0 * * *" # Runs daily at midnight
 
-permissions:
-  actions: write
-  contents: write
-  issues: write
-  pull-requests: write
+permissions: write-all
 
 jobs:
   common-cron-checks:
