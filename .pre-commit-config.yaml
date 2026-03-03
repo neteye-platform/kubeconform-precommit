@@ -64,17 +64,23 @@ repos:
     hooks:
       - id: uv-lock
 
+  - repo: https://github.com/ansible/ansible-lint
+    rev: 19f673a091111d07688352cd2f19f0460055feba # frozen: v26.2.0
+    hooks:
+      - id: ansible-lint
+
   - repo: https://github.com/hadolint/hadolint
     rev: 57e1618d78fd469a92c1e584e8c9313024656623 # frozen: v2.14.0
     hooks:
       - id: hadolint-docker
 
-  - repo: https://github.com/markdownlint/markdownlint
-    rev: 6a63be82e63a96cc8a0ba48abdbed819025ef233 # frozen: v0.15.0
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: 5387279b3b4c24822c0f86d4df4f28b37e3e8992 # frozen: v0.21.0
     hooks:
-      - id: markdownlint_docker
+      - id: markdownlint-cli2
 
   - repo: https://github.com/renovatebot/pre-commit-hooks
     rev: afa3737352c779377771262f6fbaaf5b4e9fd0fd # frozen: 43.46.6
     hooks:
       - id: renovate-config-validator
+        args: [--strict]
