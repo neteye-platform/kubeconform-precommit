@@ -60,7 +60,7 @@ repos:
       - id: ruff-format
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 099118db1761b62a9c5a3680a66fa6e2d973bcad # frozen: 0.10.7
+    rev: c0e017ba340d532c2eed9aaa4af5d0e7432020df # frozen: 0.10.8
     hooks:
       - id: uv-lock
 
@@ -80,7 +80,7 @@ repos:
       - id: markdownlint-cli2
 
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: afa3737352c779377771262f6fbaaf5b4e9fd0fd # frozen: 43.46.6
+    rev: 9a7f2e9c4a54810a1d19bc2339c269279cf4525c # frozen: 43.52.0
     hooks:
       - id: renovate-config-validator
         args: [--strict]
