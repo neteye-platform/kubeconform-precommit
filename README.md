@@ -6,25 +6,12 @@
 A [pre-commit](https://pre-commit.com/) hook to validate Kubernetes manifests
 using [kubeconform](https://github.com/yannh/kubeconform).
 
-## Contents
-
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Usage](#usage)
-  - [Basic Setup](#basic-setup)
-  - [Kustomize Mode](#kustomize-mode)
-  - [Passing Extra Arguments](#passing-extra-arguments)
-- [Configuration Examples](#configuration-examples)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
-- [Contributing](#contributing)
-
 ## Features
 
-- ✅ Validate Kubernetes manifests automatically on commit
-- 🗂️ Support for Kustomize overlays with glob patterns
-- 🔧 Pass custom kubeconform flags (strict mode, schema options, etc.)
-- 🚀 Lightweight Python wrapper with helpful error messages
+- Validate Kubernetes manifests automatically on commit
+- Support for Kustomize overlays with glob patterns
+- Pass custom kubeconform flags (strict mode, schema options, etc.)
+- Lightweight Python wrapper with helpful error messages
 
 ## Prerequisites
 
