@@ -32,12 +32,12 @@ repos:
       - id: check-useless-excludes
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: 6eaad039603a4de39fddd1cf5f727391efe9974e # frozen: v8.30.0
+    rev: 8d1f98c7967eb1e79cb44ac6241a124e145d2165 # frozen: v8.30.1
     hooks:
       - id: gitleaks
 
   - repo: https://github.com/codespell-project/codespell
-    rev: 63c8f8312b7559622c0d82815639671ae42132ac # frozen: v2.4.1
+    rev: 2ccb47ff45ad361a21071a7eedda4c37e6ae8c5a # frozen: v2.4.2
     hooks:
       - id: codespell
 
@@ -52,7 +52,7 @@ repos:
       - id: shellcheck
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: a27a2e47c7751b639d2b5badf0ef6ff11fee893f # frozen: v0.15.4
+    rev: b969e2851312ca2b24bbec879ba4954341d1bd12 # frozen: v0.15.5
     hooks:
       - id: ruff-check
         args:
@@ -60,12 +60,12 @@ repos:
       - id: ruff-format
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: c0e017ba340d532c2eed9aaa4af5d0e7432020df # frozen: 0.10.8
+    rev: e38709b2694c2988ab0c618ee63ac156e155d5c4 # frozen: 0.10.9
     hooks:
       - id: uv-lock
 
   - repo: https://github.com/ansible/ansible-lint
-    rev: 19f673a091111d07688352cd2f19f0460055feba # frozen: v26.2.0
+    rev: 8ba9595a4acd1b906eb75568b34f6ef592cd1528 # frozen: v26.3.0
     hooks:
       - id: ansible-lint
 
@@ -80,7 +80,7 @@ repos:
       - id: markdownlint-cli2
 
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: c909fbaef2d4db326ba9a1959a909f9bcc196576 # frozen: 43.55.6
+    rev: dd5355f79b0a120ee5d88028bbf0a647bb479369 # frozen: 43.64.5
     hooks:
       - id: renovate-config-validator
         args: [--strict]
