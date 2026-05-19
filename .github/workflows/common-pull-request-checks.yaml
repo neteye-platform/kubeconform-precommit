@@ -3,7 +3,7 @@ name: Common Pull Request Checks
 on:
   pull_request:
     branches:
-      - "*"
+      - "**"
 
 permissions: write-all
 
