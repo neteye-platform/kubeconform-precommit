@@ -1,0 +1,71 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+      - name: Install Python
+        run: uv python install "${{ matrix.python-version }}"
+      - name: Install development dependencies
+        run: uv sync --locked --dev --python "${{ matrix.python-version }}"
+      - name: Run tests
+        run: uv run --python "${{ matrix.python-version }}" pytest
+      - name: Validate public hook manifest
+        run: >-
+          uv run --python "${{ matrix.python-version }}" pre-commit
+          validate-manifest .pre-commit-hooks.yaml
+      - name: Build and smoke-test wheel
+        run: |
+          dist_dir="$(mktemp -d)"
+          venv_dir="$(mktemp -d)"
+          rmdir "$venv_dir"
+          uv build --python "${{ matrix.python-version }}" --out-dir "$dist_dir"
+          uv venv --python "${{ matrix.python-version }}" "$venv_dir"
+          uv pip install --python "$venv_dir/bin/python" --no-deps "$dist_dir"/*.whl
+          "$venv_dir/bin/python" - <<'PY'
+          from importlib.metadata import distribution
+
+          package = distribution("kubeconform-precommit")
+          metadata = package.metadata
+          assert metadata["License-Expression"] == "MIT OR Apache-2.0"
+          license_files = metadata.get_all("License-File") or []
+          assert set(license_files) == {"LICENSE-APACHE", "LICENSE-MIT"}
+          installed_files = {
+              str(path) for path in package.files or []
+          }
+          for license_file in license_files:
+              assert any(
+                  path.endswith("/licenses/" + license_file)
+                  for path in installed_files
+              )
+          project_urls = dict(
+              value.split(", ", 1)
+              for value in metadata.get_all("Project-URL") or []
+          )
+          assert project_urls == {
+              "Repository": "https://github.com/neteye-platform/kubeconform-precommit",
+              "Issues": "https://github.com/neteye-platform/kubeconform-precommit/issues",
+          }
+          assert metadata.get_all("Requires-Dist") is None
+          PY
+          "$venv_dir/bin/kubeconform-precommit"
