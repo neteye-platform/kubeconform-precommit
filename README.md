@@ -18,13 +18,13 @@ you configure.
 
 ### Validate manifest files
 
-Replace `<next-release-tag>` with the first release containing this Go
-migration; `v0.1.0` is the former Python hook.
+Use `v0.2.0` or later, the first release with the Go implementation;
+`v0.1.0` is the former Python hook.
 
 ```yaml
 repos:
   - repo: https://github.com/neteye-platform/kubeconform-precommit
-    rev: <next-release-tag>
+    rev: v0.2.0
     hooks:
       - id: kubeconform
         files: ^manifests/
@@ -54,7 +54,7 @@ immutable commit, or at a local schema snapshot.
 ```yaml
 repos:
   - repo: https://github.com/neteye-platform/kubeconform-precommit
-    rev: <next-release-tag>
+    rev: v0.2.0
     hooks:
       - id: kubeconform-kustomize
         args:
