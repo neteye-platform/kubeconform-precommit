@@ -18,34 +18,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - name: Set up prek
+        uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
         with:
-          go-version-file: go.mod
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
-        with:
-          # renovate: datasource=pypi depName=uv
-          version: "0.12.18"
-
-      - name: Check formatting
-        run: test -z "$(gofmt -l cmd/kubeconform-kustomize/*.go)"
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Test
-        run: go test ./...
-
-      - name: Validate public hook manifest
-        # renovate: datasource=pypi depName=pre-commit
-        run: uvx --from pre-commit==4.6.2 pre-commit validate-manifest .pre-commit-hooks.yaml
-
-      - name: Validate public hook manifest with prek
-        # renovate: datasource=pypi depName=prek
-        run: uvx --from prek==0.5.3 prek validate-manifest .pre-commit-hooks.yaml
+          install-only: true
 
       - name: Smoke-test Go hook provisioning
-        # renovate: datasource=pypi depName=pre-commit
-        run: uvx --from pre-commit==4.6.2 pre-commit try-repo . kubeconform --files README.md
+        run: prek try-repo . kubeconform --files README.md

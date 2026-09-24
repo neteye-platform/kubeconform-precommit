@@ -4,18 +4,10 @@
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": ["/(^|/)\\.pre-commit-hooks\\.yaml$/"],
+      "managerFilePatterns": [".pre-commit-hooks.yaml", ".pre-commit-config.yaml"],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>golang-version) depName=(?<depName>go)\\r?\\n[ \\t]*language_version:[ \\t]*[\\\"'](?<currentValue>[\\d.]+)[\\\"']",
+        "# renovate: datasource=(?<datasource>golang-version) depName=(?<depName>go)\\r?\\n[ \\t]*(?:language_version|golang):[ \\t]*[\\\"'](?<currentValue>[\\d.]+)[\\\"']",
         "# renovate: datasource=(?<datasource>go) depName=(?<depName>[a-zA-Z0-9._/-]+)\\r?\\n[ \\t]*-[ \\t]*\\S+@(?<currentValue>\\S+)"
-      ]
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": ["/(^|/)\\.github/workflows/tests\\.yaml$/"],
-      "matchStrings": [
-        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>[^\\s]+)\\r?\\n[ \\t]*version:[ \\t]*[\\\"']?(?<currentValue>[^\\s\\\"']+)[\\\"']?",
-        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>[^\\s]+)\\r?\\n[ \\t]*run: uvx --from [^=\\s]+==(?<currentValue>[^\\s]+)"
       ]
     }
   ],

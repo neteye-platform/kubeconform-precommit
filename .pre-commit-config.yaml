@@ -1,4 +1,8 @@
 # NOTE: This file should be named prek.toml but Renovate does not support it yet.
+default_language_version:
+  # renovate: datasource=golang-version depName=go
+  golang: "1.27.1"
+
 repos:
   - repo: builtin
     hooks:
@@ -19,6 +23,11 @@ repos:
       - id: check-merge-conflict
       - id: detect-private-key
       - id: check-executables-have-shebangs
+
+  - repo: https://github.com/pre-commit/pre-commit
+    rev: 9767b6c8211a6bf683875a0afcf2b390457a4b66 # frozen: v4.6.2
+    hooks:
+      - id: validate_manifest
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # frozen: v6.0.0
@@ -79,3 +88,20 @@ repos:
     hooks:
       - id: renovate-config-validator
         args: [--strict]
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: 27774aaf853a4fd21f1dd5e69439459dc1b26e68 # frozen: v2.13.2
+    hooks:
+      - id: golangci-lint-config-verify
+      - id: golangci-lint-fmt
+      - id: golangci-lint-full
+
+  # Repository-specific checks for the Go hook implementation.
+  - repo: local
+    hooks:
+      - id: go-test
+        name: go test
+        entry: go test ./...
+        language: golang
+        files: (\.go|^go\.mod)$
+        pass_filenames: false
