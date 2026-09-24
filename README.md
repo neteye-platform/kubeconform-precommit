@@ -6,9 +6,10 @@ Kustomize overlays.
 
 ## Provisioning
 
-Consumers need pre-commit 3.0.0 or later. They need no manual kubeconform,
-kustomize, Go, Python, Docker, or PATH setup. pre-commit provisions an
-isolated Go hook environment containing the hook and its pinned tools. The
+The hooks work with upstream pre-commit (3.0.0 or later) and with
+[prek](https://github.com/j178/prek). The hook manager provisions an isolated
+environment with the pinned Go toolchain, kubeconform, kustomize, and this
+hook repository, so no manual Go, Python, Docker, or PATH setup is needed. The
 first installation uses the network; later runs reuse the cached environment.
 kubeconform schema sources can still use the network, depending on the flags
 you configure.
@@ -34,7 +35,8 @@ repos:
 ```
 
 The plain hook is native kubeconform: its configured arguments are passed to
-kubeconform exactly, and pre-commit supplies matching YAML and JSON filenames.
+kubeconform exactly, and the hook manager supplies matching YAML and JSON
+filenames.
 kubeconform rejects files that are not Kubernetes manifests (for example
 `.pre-commit-config.yaml` or `renovate.json`), so restrict the hook with
 `files` or `exclude`. See the
