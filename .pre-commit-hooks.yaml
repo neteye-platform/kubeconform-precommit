@@ -1,13 +1,29 @@
 - id: kubeconform
   name: Kubeconform
   description: Validate Kubernetes manifests with kubeconform
-  entry: kubeconform-precommit
-  language: python
+  entry: kubeconform
+  language: golang
+  # renovate: datasource=golang-version depName=go
+  language_version: "1.27.1"
+  minimum_pre_commit_version: "3.0.0"
+  additional_dependencies:
+    # renovate: datasource=go depName=github.com/yannh/kubeconform
+    - github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
+    # renovate: datasource=go depName=sigs.k8s.io/kustomize/kustomize/v5
+    - sigs.k8s.io/kustomize/kustomize/v5@v5.8.1
   types: [yaml]
 
 - id: kubeconform-kustomize
   name: Kubeconform (Kustomize)
   description: Validate Kustomize overlays with kubeconform
-  entry: kubeconform-precommit --kustomize
-  language: python
+  entry: kubeconform-kustomize
+  language: golang
+  # renovate: datasource=golang-version depName=go
+  language_version: "1.27.1"
+  minimum_pre_commit_version: "3.0.0"
+  additional_dependencies:
+    # renovate: datasource=go depName=github.com/yannh/kubeconform
+    - github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
+    # renovate: datasource=go depName=sigs.k8s.io/kustomize/kustomize/v5
+    - sigs.k8s.io/kustomize/kustomize/v5@v5.8.1
   pass_filenames: false

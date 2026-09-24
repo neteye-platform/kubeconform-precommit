@@ -1,118 +1,128 @@
 # Kubeconform Pre-Commit
 
 [pre-commit](https://pre-commit.com/) hooks for validating Kubernetes manifests
-with [kubeconform](https://github.com/yannh/kubeconform). Use the
-`kubeconform` hook for manifest files, or `kubeconform-kustomize` to build and
-validate Kustomize overlays.
+with [kubeconform](https://github.com/yannh/kubeconform), including rendered
+Kustomize overlays.
 
-## Prerequisites
+## Provisioning
 
-Install [pre-commit](https://pre-commit.com/) and install
-[kubeconform](https://github.com/yannh/kubeconform) separately so that it is
-available on `PATH`. Kustomize mode also requires
-[kustomize](https://github.com/kubernetes-sigs/kustomize) on `PATH`.
-
-The Python hook environment does not install either native tool. Confirm the
-tools visible to the hook with `command -v kubeconform` and, for Kustomize
-mode, `command -v kustomize`.
+Consumers need pre-commit 3.0.0 or later. They need no manual kubeconform,
+kustomize, Go, Python, Docker, or PATH setup. pre-commit provisions an
+isolated Go hook environment containing the hook and its pinned tools. The
+first installation uses the network; later runs reuse the cached environment.
+kubeconform schema sources can still use the network, depending on the flags
+you configure.
 
 ## Use the hooks
 
 ### Validate manifest files
 
-Add the normal hook to `.pre-commit-config.yaml`:
+Use the first release containing this Go migration; `v0.1.0` is the former
+Python hook.
 
 ```yaml
 repos:
   - repo: https://github.com/neteye-platform/kubeconform-precommit
-    rev: v0.1.0
+    rev: <next-release-tag>
     hooks:
       - id: kubeconform
+        args: [-strict, -ignore-missing-schemas]
 ```
 
-pre-commit supplies matching YAML filenames to this hook. They are passed to
-`kubeconform` in that order as literal filenames; the normal hook does not
-expand filename globs.
+The plain hook is native kubeconform: its configured arguments are passed to
+kubeconform exactly, and pre-commit supplies matching YAML filenames. See the
+[kubeconform flags](https://github.com/yannh/kubeconform#usage).
 
 ### Build and validate Kustomize overlays
 
-Pass overlay paths explicitly to the Kustomize hook:
-
 ```yaml
 repos:
   - repo: https://github.com/neteye-platform/kubeconform-precommit
-    rev: v0.1.0
+    rev: <next-release-tag>
     hooks:
       - id: kubeconform-kustomize
-        args: [overlays/development, overlays/production]
+        args:
+          - overlays/development
+          - overlays/production
+          - --
+          - -strict
+          - -schema-location
+          - https://example.invalid/schemas/{{.ResourceKind}}.json
 ```
 
-This public hook has `pass_filenames: false`: changed filenames are not added
-to its command. Instead, it receives only the overlay arguments configured
-above. For each path it runs `kustomize build`, then sends that rendered stdout
-to kubeconform on standard input.
+`kubeconform-kustomize` has `pass_filenames: false`; configure every overlay
+path explicitly. It does no custom globbing, so paths are passed literally to
+`kustomize build`. The first `--` separates overlay paths from native
+kubeconform arguments. The separator is optional; without it, every argument
+is an overlay. Arguments after it are forwarded exactly as configured (including
+spaces within one YAML string), without shell parsing.
 
-Overlay arguments support globs. Each input pattern is processed in input
-order with recursive glob matching (`**` traverses directories), and its
-matches are sorted lexically before the next pattern. An unmatched pattern
-remains a literal path, and duplicate matches are not removed. For example:
+The public Kustomize hook intentionally has no file-type filter because a
+generator can produce non-YAML source files. Consumers that want selective
+execution can add a `files` regular expression in their own hook configuration.
+
+### Migrating `--kubeconform-args`
+
+For the plain hook, replace the old two-string, whitespace-split argument
+style:
 
 ```yaml
-args: ["overlays/*/", overlays/production]
+- id: kubeconform
+  args:
+    - --kubeconform-args
+    - "-strict -ignore-missing-schemas"
 ```
 
-### Pass kubeconform flags
-
-Use `--kubeconform-args` with one string value:
+with native discrete kubeconform arguments:
 
 ```yaml
-hooks:
-  - id: kubeconform
-    args:
-      - --kubeconform-args
-      - "-strict -ignore-missing-schemas"
+- id: kubeconform
+  args:
+    - -strict
+    - -ignore-missing-schemas
 ```
 
-The value is split on whitespace with Python `str.split()` and is not parsed by
-a shell. Quoting-looking text is not grouped; for example, `"-schema-location
-'two words'"` becomes three arguments. See the
-[kubeconform flags](https://github.com/yannh/kubeconform#usage) for available
-options.
+For Kustomize, replace:
 
-## Exit behavior and troubleshooting
-
-With no input files, the hook exits successfully before checking for tools. In
-normal mode it returns kubeconform's exit status. Kustomize mode continues with
-later overlays after a failure: build failures write their stderr and count as
-status `1`; validation failures use kubeconform's status. The most recently
-encountered failure determines the final status; later successful items do not
-reset it.
-
-If a hook reports that a tool is missing, install it outside the hook
-environment and check `command -v kubeconform` or `command -v kustomize` from
-the same shell that runs pre-commit. Check that configured overlay paths and
-any globs resolve relative to the repository root.
-
-From a checkout of this repository, test manually with tools already available
-on `PATH`:
-
-```console
-uv run kubeconform-precommit manifest.yaml
-uv run kubeconform-precommit --kustomize overlays/development
+```yaml
+- id: kubeconform-kustomize
+  args:
+    - overlays/development
+    - --kubeconform-args
+    - "-strict -ignore-missing-schemas"
 ```
+
+with explicit overlay and native argument boundaries:
+
+```yaml
+- id: kubeconform-kustomize
+  args:
+    - overlays/development
+    - --
+    - -strict
+    - -ignore-missing-schemas
+```
+
+## Exit behavior
+
+For the Kustomize wrapper, no overlays prints usage and exits `2`. It resolves
+both tools before processing overlays, runs `kustomize build` for each overlay,
+and passes the exact rendered bytes to kubeconform stdin. It continues after
+build or validation failures and exits `1` if any overlay failed; otherwise it
+exits `0`. Kubeconform arguments after `--` are passed as exact native
+arguments.
 
 ## Development
 
 ```console
-uv sync --locked --dev
-uv run pytest
-uv run pre-commit validate-manifest .pre-commit-hooks.yaml
-prek run --all-files
-uv build
+gofmt -w cmd/kubeconform-kustomize/*.go
+go vet ./...
+go test ./...
+uvx --from pre-commit==4.6.2 pre-commit validate-manifest .pre-commit-hooks.yaml
+uvx --from prek==0.5.3 prek validate-manifest .pre-commit-hooks.yaml
 ```
 
-`prek run --all-files` requires [prek](https://github.com/j178/prek) to be
-installed separately.
+This is a Go project; it has no Python or uv package project.
 
 ## Security
 

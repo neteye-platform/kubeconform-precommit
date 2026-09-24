@@ -59,11 +59,6 @@ repos:
           - --fix
       - id: ruff-format
 
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: d9fca3320346514799461a80b0753eb45d707d46 # frozen: 0.11.28
-    hooks:
-      - id: uv-lock
-
   - repo: https://github.com/ansible/ansible-lint
     rev: 262624cd0ab22a4221293216856c59671ce7aa5e # frozen: v26.6.0
     hooks:
