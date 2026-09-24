@@ -13,22 +13,21 @@
   ],
   "packageRules": [
     {
-      "description": "Wait 7 days before proposing newly published versions of any dependency",
-      "matchPackageNames": ["*"],
+      "description": "Delay updates for pinned hook tooling",
+      "matchPackageNames": ["go", "github.com/yannh/kubeconform", "sigs.k8s.io/kustomize/kustomize/v5"],
+      "matchManagers": ["gomod", "custom.regex"],
       "minimumReleaseAge": "7 days"
     },
     {
-      "matchPackageNames": ["go"],
+      "matchDepNames": ["go"],
       "matchManagers": ["gomod", "custom.regex"],
-      "groupName": "Go toolchain",
-      "minimumReleaseAge": "7 days"
+      "groupName": "Go toolchain"
     },
     {
       "description": "Keep the kubeconform library in go.mod in sync with the hook's kubeconform binary",
-      "matchPackageNames": ["github.com/yannh/kubeconform"],
+      "matchDepNames": ["github.com/yannh/kubeconform"],
       "matchManagers": ["gomod", "custom.regex"],
-      "groupName": "kubeconform",
-      "minimumReleaseAge": "7 days"
+      "groupName": "kubeconform"
     }
   ]
 }
