@@ -5,6 +5,15 @@ linters:
   enable:
     - errorlint
     - gosec
+    - misspell
+    - nolintlint
+    - unconvert
+
+  settings:
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: true
 
 formatters:
   enable:
