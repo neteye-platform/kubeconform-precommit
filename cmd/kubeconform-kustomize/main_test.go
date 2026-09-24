@@ -3,26 +3,11 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
 	"testing"
-)
-
-const (
-	testOverlayDev        = "overlays/dev"
-	testOverlayProd       = "overlays/prod"
-	testSchemaLocation    = "-schema-location"
-	testSchemaLocationURL = "https://example.invalid/two words"
-	testStrict            = "-strict"
-	binKustomize          = "/bin/kustomize"
-	binKubeconform        = "/bin/kubeconform"
-)
-
-var (
-	errBuildFailed      = errors.New("build failed")
-	errValidationFailed = errors.New("validation failed")
-	errMissing          = errors.New("missing")
 )
 
 type invocation struct {
@@ -36,20 +21,20 @@ func TestSplitArgsPreservesSeparatorArgumentsVerbatim(t *testing.T) {
 
 	overlays, kubeconformArgs := splitArgs(
 		[]string{
-			testOverlayDev,
-			testOverlayProd,
+			"overlays/dev",
+			"overlays/prod",
 			"--",
-			testSchemaLocation,
-			testSchemaLocationURL,
+			"-schema-location",
+			"https://example.invalid/two words",
 			"--",
-			testStrict,
+			"-strict",
 		},
 	)
-	if !reflect.DeepEqual(overlays, []string{testOverlayDev, testOverlayProd}) {
+	if !reflect.DeepEqual(overlays, []string{"overlays/dev", "overlays/prod"}) {
 		t.Fatalf("overlays = %#v", overlays)
 	}
 
-	want := []string{testSchemaLocation, testSchemaLocationURL, "--", testStrict}
+	want := []string{"-schema-location", "https://example.invalid/two words", "--", "-strict"}
 	if !reflect.DeepEqual(kubeconformArgs, want) {
 		t.Fatalf("kubeconform args = %#v, want %#v", kubeconformArgs, want)
 	}
@@ -62,7 +47,7 @@ func TestRunWithoutOverlaysUsesUsageBeforeLookup(t *testing.T) {
 
 	lookups := 0
 
-	status := run([]string{"--", testStrict}, func(string) (string, error) {
+	status := run([]string{"--", "-strict"}, func(string) (string, error) {
 		lookups++
 
 		return "", nil
@@ -82,7 +67,7 @@ func TestRunOneOverlayForwardsDiscreteArgumentsAndBytes(t *testing.T) {
 	var calls []invocation
 
 	status := run(
-		[]string{testOverlayDev, "--", testSchemaLocation, testSchemaLocationURL},
+		[]string{"overlays/dev", "--", "-schema-location", "https://example.invalid/two words"},
 		lookupOK,
 		func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
 			var input []byte
@@ -96,12 +81,9 @@ func TestRunOneOverlayForwardsDiscreteArgumentsAndBytes(t *testing.T) {
 				}
 			}
 
-			calls = append(
-				calls,
-				invocation{name: name, args: append([]string(nil), args...), stdin: input},
-			)
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
 
-			if name == binKustomize {
+			if name == "/bin/kustomize" {
 				_, _ = stdout.Write([]byte{'y', 0xff, '\n'})
 			}
 
@@ -115,10 +97,10 @@ func TestRunOneOverlayForwardsDiscreteArgumentsAndBytes(t *testing.T) {
 	}
 
 	want := []invocation{
-		{name: binKustomize, args: []string{"build", testOverlayDev}, stdin: nil},
+		{name: "/bin/kustomize", args: []string{"build", "overlays/dev"}},
 		{
-			name:  binKubeconform,
-			args:  []string{testSchemaLocation, testSchemaLocationURL},
+			name:  "/bin/kubeconform",
+			args:  []string{"-schema-location", "https://example.invalid/two words"},
 			stdin: []byte{'y', 0xff, '\n'},
 		},
 	}
@@ -136,21 +118,15 @@ func TestRunBuildFailureSkipsValidation(t *testing.T) {
 		[]string{"broken"},
 		lookupOK,
 		func(name string, args []string, _ io.Reader, _ io.Writer, _ io.Writer) error {
-			calls = append(
-				calls,
-				invocation{name: name, args: append([]string(nil), args...), stdin: nil},
-			)
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...)})
 
-			return errBuildFailed
+			return errors.New("build failed")
 		},
 		io.Discard,
 		io.Discard,
 	)
 	if status != 1 ||
-		!reflect.DeepEqual(
-			calls,
-			[]invocation{{name: binKustomize, args: []string{"build", "broken"}, stdin: nil}},
-		) {
+		!reflect.DeepEqual(calls, []invocation{{name: "/bin/kustomize", args: []string{"build", "broken"}}}) {
 		t.Fatalf("status=%d calls=%#v", status, calls)
 	}
 }
@@ -162,13 +138,13 @@ func TestRunValidationFailureReturnsOne(t *testing.T) {
 		[]string{"valid"},
 		lookupOK,
 		func(name string, _ []string, _ io.Reader, stdout io.Writer, _ io.Writer) error {
-			if name == binKustomize {
+			if name == "/bin/kustomize" {
 				_, _ = stdout.Write([]byte("apiVersion: v1\n"))
 
 				return nil
 			}
 
-			return errValidationFailed
+			return errors.New("validation failed")
 		},
 		io.Discard,
 		io.Discard,
@@ -192,14 +168,11 @@ func TestRunMultipleOverlaysContinuesAndAggregatesFailures(t *testing.T) {
 				input, _ = io.ReadAll(stdin)
 			}
 
-			calls = append(
-				calls,
-				invocation{name: name, args: append([]string(nil), args...), stdin: input},
-			)
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
 
-			if name == binKustomize {
+			if name == "/bin/kustomize" {
 				if args[1] == "bad-build" {
-					return errBuildFailed
+					return errors.New("build failed")
 				}
 
 				_, _ = stdout.Write([]byte(args[1]))
@@ -208,7 +181,7 @@ func TestRunMultipleOverlaysContinuesAndAggregatesFailures(t *testing.T) {
 			}
 
 			if string(input) == "bad-validation" {
-				return errValidationFailed
+				return errors.New("validation failed")
 			}
 
 			return nil
@@ -220,7 +193,7 @@ func TestRunMultipleOverlaysContinuesAndAggregatesFailures(t *testing.T) {
 		t.Fatalf("status=%d calls=%#v", status, calls)
 	}
 
-	if calls[4].name != binKubeconform || string(calls[4].stdin) != "good" {
+	if calls[4].name != "/bin/kubeconform" || string(calls[4].stdin) != "good" {
 		t.Fatalf("did not continue to final overlay: %#v", calls[4])
 	}
 }
@@ -232,7 +205,7 @@ func TestRunMultipleSuccessfulOverlaysReturnsZero(t *testing.T) {
 		[]string{"one", "two"},
 		lookupOK,
 		func(name string, args []string, _ io.Reader, stdout io.Writer, _ io.Writer) error {
-			if name == binKustomize {
+			if name == "/bin/kustomize" {
 				_, _ = stdout.Write([]byte(args[1]))
 			}
 
@@ -262,7 +235,7 @@ func TestRunReportsMissingExecutables(t *testing.T) {
 				lookedUp = append(lookedUp, name)
 
 				if name == missing {
-					return "", errMissing
+					return "", errors.New("missing")
 				}
 
 				return "/bin/" + name, nil
@@ -277,6 +250,66 @@ func TestRunReportsMissingExecutables(t *testing.T) {
 				t.Fatalf("status=%d lookups=%#v stderr=%q", status, lookedUp, stderr.String())
 			}
 		})
+	}
+}
+
+func TestRunReportsExecutionErrorsOnStderr(t *testing.T) {
+	t.Parallel()
+
+	permErr := fmt.Errorf("running kustomize: %w", errors.New("permission denied"))
+
+	var stderr bytes.Buffer
+
+	status := run(
+		[]string{"overlay"},
+		lookupOK,
+		func(name string, _ []string, _ io.Reader, _ io.Writer, _ io.Writer) error {
+			if name == "/bin/kustomize" {
+				return permErr
+			}
+
+			t.Fatal("kubeconform must not run when build failed")
+
+			return nil
+		},
+		io.Discard,
+		&stderr,
+	)
+	if status != 1 {
+		t.Fatalf("status = %d", status)
+	}
+
+	if !strings.Contains(stderr.String(), "overlay") ||
+		!strings.Contains(stderr.String(), "permission denied") {
+		t.Fatalf("stderr = %q, want it to mention the overlay and the underlying error", stderr.String())
+	}
+}
+
+func TestRunReportsKubeconformExecutionErrorOnStderr(t *testing.T) {
+	t.Parallel()
+
+	var stderr bytes.Buffer
+
+	status := run(
+		[]string{"overlay"},
+		lookupOK,
+		func(name string, _ []string, _ io.Reader, _ io.Writer, _ io.Writer) error {
+			if name == "/bin/kubeconform" {
+				return fmt.Errorf("running kubeconform: %w", errors.New("exec format error"))
+			}
+
+			return nil
+		},
+		io.Discard,
+		&stderr,
+	)
+	if status != 1 {
+		t.Fatalf("status = %d", status)
+	}
+
+	if !strings.Contains(stderr.String(), "overlay") ||
+		!strings.Contains(stderr.String(), "exec format error") {
+		t.Fatalf("stderr = %q, want it to mention the overlay and the underlying error", stderr.String())
 	}
 }
 

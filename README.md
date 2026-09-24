@@ -17,8 +17,8 @@ you configure.
 
 ### Validate manifest files
 
-Use the first release containing this Go migration; `v0.1.0` is the former
-Python hook.
+Replace `<next-release-tag>` with the first release containing this Go
+migration; `v0.1.0` is the former Python hook.
 
 ```yaml
 repos:
@@ -26,12 +26,24 @@ repos:
     rev: <next-release-tag>
     hooks:
       - id: kubeconform
-        args: [-strict, -ignore-missing-schemas]
+        files: ^manifests/
+        args:
+          - -strict
+          - -kubernetes-version
+          - "1.36.2"
 ```
 
 The plain hook is native kubeconform: its configured arguments are passed to
-kubeconform exactly, and pre-commit supplies matching YAML filenames. See the
+kubeconform exactly, and pre-commit supplies matching YAML and JSON filenames.
+kubeconform rejects files that are not Kubernetes manifests (for example
+`.pre-commit-config.yaml` or `renovate.json`), so restrict the hook with
+`files` or `exclude`. See the
 [kubeconform flags](https://github.com/yannh/kubeconform#usage).
+
+For reproducible validation, pin `-kubernetes-version` to the Kubernetes
+version targeted by your cluster (`1.36.2` above is only an example).
+Otherwise kubeconform validates against its upstream `master` schemas, which
+change over time.
 
 ### Build and validate Kustomize overlays
 
@@ -115,12 +127,14 @@ arguments.
 ## Development
 
 ```console
-gofmt -w cmd/kubeconform-kustomize/*.go
-go vet ./...
-go test ./...
-uvx --from pre-commit==4.6.2 pre-commit validate-manifest .pre-commit-hooks.yaml
-uvx --from prek==0.5.3 prek validate-manifest .pre-commit-hooks.yaml
+prek run --all-files
+testdata/smoke-test.sh prek
+testdata/smoke-test.sh pre-commit
 ```
+
+`prek run` covers formatting, golangci-lint, `go test`, and manifest
+validation. The smoke test runs the public `kubeconform` hook from this
+checkout against the fixtures in `testdata/`.
 
 This is a Go project; it has no Python or uv package project.
 

@@ -8,6 +8,18 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # renovate: datasource=pypi depName=uv
+  UV_VERSION: "0.12.18"
+  # renovate: datasource=pypi depName=pre-commit
+  PRE_COMMIT_VERSION: "4.6.2"
+  # renovate: datasource=pypi depName=prek
+  PREK_VERSION: "0.5.3"
+
 jobs:
   tests:
     name: Tests
@@ -18,10 +30,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up prek
-        uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          install-only: true
+          version: ${{ env.UV_VERSION }}
 
-      - name: Smoke-test Go hook provisioning
-        run: prek try-repo . kubeconform --files README.md
+      - name: Smoke-test hook with pre-commit
+        run: ./testdata/smoke-test.sh uvx --from "pre-commit==${PRE_COMMIT_VERSION}" pre-commit
+
+      - name: Smoke-test hook with prek
+        run: ./testdata/smoke-test.sh uvx --from "prek==${PREK_VERSION}" prek

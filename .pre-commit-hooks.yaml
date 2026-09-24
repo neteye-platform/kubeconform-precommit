@@ -11,7 +11,7 @@
     - github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
     # renovate: datasource=go depName=sigs.k8s.io/kustomize/kustomize/v5
     - sigs.k8s.io/kustomize/kustomize/v5@v5.8.1
-  types: [yaml]
+  types_or: [yaml, json]
 
 - id: kubeconform-kustomize
   name: Kubeconform (Kustomize)

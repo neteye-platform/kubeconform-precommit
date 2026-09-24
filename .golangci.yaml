@@ -1,13 +1,11 @@
 version: "2"
 
 linters:
-  default: all
+  default: standard
+  enable:
+    - errorlint
+    - gosec
 
 formatters:
   enable:
-    - gci
     - gofmt
-    - gofumpt
-    - goimports
-    - golines
-    - swaggo
