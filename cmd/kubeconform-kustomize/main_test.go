@@ -76,6 +76,7 @@ func TestRunAcceptsKubeconformFlags(t *testing.T) {
 			args: []string{"-schema-location", "https://example.invalid/{{.ResourceKind}}.json"},
 		},
 		{name: "kubernetes version", args: []string{"-kubernetes-version", "1.36.2"}},
+		{name: "one worker", args: []string{"-n", "1"}},
 		{
 			name: "repeated schema locations",
 			args: []string{"-schema-location", "a", "-schema-location", "b"},
@@ -158,6 +159,37 @@ func TestRunRejectsPositionalKubeconformInputsBeforeExecution(t *testing.T) {
 				&stderr,
 			)
 			if status != exitUsageError || !strings.Contains(stderr.String(), tt.want) {
+				t.Fatalf("status=%d stderr=%q", status, stderr.String())
+			}
+		})
+	}
+}
+
+func TestRunRejectsNonPositiveWorkerCountsBeforeExecution(t *testing.T) {
+	t.Parallel()
+
+	for _, workers := range []string{"0", "-1"} {
+		t.Run(workers, func(t *testing.T) {
+			t.Parallel()
+
+			var stderr bytes.Buffer
+
+			status := run(
+				[]string{"overlay", "--", "-n", workers},
+				func(string) (string, error) {
+					t.Fatal("lookup must not run")
+
+					return "", nil
+				},
+				func(string, []string, io.Reader, io.Writer, io.Writer) error {
+					t.Fatal("command must not run")
+
+					return nil
+				},
+				io.Discard,
+				&stderr,
+			)
+			if status != exitUsageError || !strings.Contains(stderr.String(), "worker count (-n) must be greater than zero") {
 				t.Fatalf("status=%d stderr=%q", status, stderr.String())
 			}
 		})

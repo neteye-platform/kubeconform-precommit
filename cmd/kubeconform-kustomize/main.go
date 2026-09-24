@@ -61,6 +61,13 @@ func run(args []string, lookup lookupFunc, command runFunc, stdout, stderr io.Wr
 		return exitUsageError
 	}
 
+	// kubeconform starts no validation workers for -n <= 0 and would block on stdin.
+	if cfg.NumberOfWorkers <= 0 {
+		_, _ = fmt.Fprintf(stderr, "kubeconform-kustomize: kubeconform worker count (-n) must be greater than zero (got: %d)\n", cfg.NumberOfWorkers)
+
+		return exitUsageError
+	}
+
 	if cfg.Help || cfg.Version {
 		_, _ = fmt.Fprintln(stderr, "kubeconform-kustomize: kubeconform help and version modes do not validate rendered overlays")
 
