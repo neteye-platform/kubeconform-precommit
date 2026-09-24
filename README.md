@@ -42,10 +42,12 @@ kubeconform rejects files that are not Kubernetes manifests (for example
 `files` or `exclude`. See the
 [kubeconform flags](https://github.com/yannh/kubeconform#usage).
 
-For reproducible validation, pin `-kubernetes-version` to the Kubernetes
-version targeted by your cluster (`1.36.2` above is only an example).
-Otherwise kubeconform validates against its upstream `master` schemas, which
-change over time.
+Pin `-kubernetes-version` to the Kubernetes version targeted by your cluster
+(`1.36.2` above is only an example). This makes the target version explicit,
+but kubeconform's default schemas are still fetched from the `master` branch
+of their upstream repository, so their contents can change. For fully
+reproducible validation, point `-schema-location` at schemas pinned to an
+immutable commit, or at a local schema snapshot.
 
 ### Build and validate Kustomize overlays
 
@@ -70,6 +72,11 @@ path explicitly. It does no custom globbing, so paths are passed literally to
 kubeconform arguments. The separator is optional; without it, every argument
 is an overlay. Arguments after it are forwarded exactly as configured (including
 spaces within one YAML string), without shell parsing.
+
+The rendered output of `kustomize build` is always what kubeconform validates,
+through stdin. Arguments after `--` must therefore be kubeconform flags:
+positional file or folder inputs, `-h`, and `-v` are rejected with exit `2`,
+because they would make kubeconform skip the rendered overlay.
 
 The public Kustomize hook intentionally has no file-type filter because a
 generator can produce non-YAML source files. Consumers that want selective
@@ -123,8 +130,9 @@ For the Kustomize wrapper, no overlays prints usage and exits `2`. It resolves
 both tools before processing overlays, runs `kustomize build` for each overlay,
 and passes the exact rendered bytes to kubeconform stdin. It continues after
 build or validation failures and exits `1` if any overlay failed; otherwise it
-exits `0`. Kubeconform arguments after `--` are passed as exact native
-arguments.
+exits `0`. Kubeconform flags after `--` are passed as exact native
+arguments; positional inputs, `-h`, and `-v` exit `2` before any overlay is
+built.
 
 ## Development
 
@@ -135,8 +143,9 @@ testdata/smoke-test.sh pre-commit
 ```
 
 `prek run` covers formatting, golangci-lint, `go test`, and manifest
-validation. The smoke test runs the public `kubeconform` hook from this
-checkout against the fixtures in `testdata/`.
+validation. The smoke test runs both public hooks from this checkout's `HEAD`
+commit against the fixtures in `testdata/`, so commit changes before running
+it.
 
 This is a Go project; it has no Python or uv package project.
 

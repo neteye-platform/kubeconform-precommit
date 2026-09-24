@@ -61,6 +61,140 @@ func TestRunWithoutOverlaysUsesUsageBeforeLookup(t *testing.T) {
 	}
 }
 
+func TestRunAcceptsKubeconformFlags(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "strict", args: []string{"-strict"}},
+		{name: "summary", args: []string{"-summary"}},
+		{name: "json output", args: []string{"-output", "json"}},
+		{
+			name: "schema location",
+			args: []string{"-schema-location", "https://example.invalid/{{.ResourceKind}}.json"},
+		},
+		{name: "kubernetes version", args: []string{"-kubernetes-version", "1.36.2"}},
+		{
+			name: "repeated schema locations",
+			args: []string{"-schema-location", "a", "-schema-location", "b"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var calls []invocation
+
+			status := run(
+				append([]string{"overlay", "--"}, tt.args...),
+				lookupOK,
+				func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+					var input []byte
+					if stdin != nil {
+						var err error
+
+						input, err = io.ReadAll(stdin)
+						if err != nil {
+							t.Fatal(err)
+						}
+					}
+
+					calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
+					if name == "/bin/kustomize" {
+						_, _ = stdout.Write([]byte("rendered"))
+					}
+
+					return nil
+				},
+				io.Discard,
+				io.Discard,
+			)
+			if status != exitOK {
+				t.Fatalf("status = %d", status)
+			}
+
+			if len(calls) != 2 || !reflect.DeepEqual(calls[1].args, tt.args) || string(calls[1].stdin) != "rendered" {
+				t.Fatalf("calls = %#v", calls)
+			}
+		})
+	}
+}
+
+func TestRunRejectsPositionalKubeconformInputsBeforeExecution(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "file", args: []string{"manifest.yaml"}, want: "manifest.yaml"},
+		{name: "directory", args: []string{"manifests/"}, want: "manifests/"},
+		{name: "with flag", args: []string{"-strict", "extra.yaml"}, want: "extra.yaml"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var stderr bytes.Buffer
+
+			status := run(
+				append([]string{"overlay", "--"}, tt.args...),
+				func(string) (string, error) {
+					t.Fatal("lookup must not run")
+
+					return "", nil
+				},
+				func(string, []string, io.Reader, io.Writer, io.Writer) error {
+					t.Fatal("command must not run")
+
+					return nil
+				},
+				io.Discard,
+				&stderr,
+			)
+			if status != exitUsageError || !strings.Contains(stderr.String(), tt.want) {
+				t.Fatalf("status=%d stderr=%q", status, stderr.String())
+			}
+		})
+	}
+}
+
+func TestRunRejectsKubeconformHelpAndVersionBeforeExecution(t *testing.T) {
+	t.Parallel()
+
+	for _, args := range [][]string{{"-h"}, {"-v"}} {
+		t.Run(args[0], func(t *testing.T) {
+			t.Parallel()
+
+			var stderr bytes.Buffer
+
+			status := run(
+				append([]string{"overlay", "--"}, args...),
+				func(string) (string, error) {
+					t.Fatal("lookup must not run")
+
+					return "", nil
+				},
+				func(string, []string, io.Reader, io.Writer, io.Writer) error {
+					t.Fatal("command must not run")
+
+					return nil
+				},
+				io.Discard,
+				&stderr,
+			)
+			if status != exitUsageError || !strings.Contains(stderr.String(), "do not validate") {
+				t.Fatalf("status=%d stderr=%q", status, stderr.String())
+			}
+		})
+	}
+}
+
 func TestRunOneOverlayForwardsDiscreteArgumentsAndBytes(t *testing.T) {
 	t.Parallel()
 

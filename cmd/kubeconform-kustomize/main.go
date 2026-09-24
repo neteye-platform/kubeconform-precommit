@@ -9,6 +9,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
+
+	"github.com/yannh/kubeconform/pkg/config"
 )
 
 // Exit codes documenting the CLI contract.
@@ -29,8 +32,8 @@ func main() {
 // runCommand executes name with args, wiring stdin/stdout/stderr, and wraps
 // any execution error with the command name for easier debugging.
 func runCommand(name string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-	//nolint:gosec // name is always kustomize or kubeconform, resolved via exec.LookPath;
-	// args are the CLI arguments this wrapper is explicitly designed to forward.
+	//nolint:gosec // G204: name is kustomize or kubeconform from exec.LookPath; args are passed without a shell.
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	cmd := exec.Command(name, args...)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
@@ -47,6 +50,29 @@ func run(args []string, lookup lookupFunc, command runFunc, stdout, stderr io.Wr
 	overlays, kubeconformArgs := splitArgs(args)
 	if len(overlays) == 0 {
 		_, _ = fmt.Fprintln(stderr, "usage: kubeconform-kustomize <overlay> [<overlay> ...] -- [<kubeconform args> ...]")
+
+		return exitUsageError
+	}
+
+	cfg, _, err := config.FromFlags("kubeconform", kubeconformArgs)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "kubeconform-kustomize: invalid kubeconform arguments: %s\n", err)
+
+		return exitUsageError
+	}
+
+	if cfg.Help || cfg.Version {
+		_, _ = fmt.Fprintln(stderr, "kubeconform-kustomize: kubeconform help and version modes do not validate rendered overlays")
+
+		return exitUsageError
+	}
+
+	if len(cfg.Files) > 0 {
+		_, _ = fmt.Fprintf(
+			stderr,
+			"kubeconform-kustomize: positional kubeconform inputs are not allowed after \"--\" (got: %s); rendered overlays are always validated via stdin\n",
+			strings.Join(cfg.Files, ", "),
+		)
 
 		return exitUsageError
 	}
