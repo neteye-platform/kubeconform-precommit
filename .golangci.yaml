@@ -1,0 +1,20 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - errorlint
+    - gosec
+    - misspell
+    - nolintlint
+    - unconvert
+
+  settings:
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: true
+
+formatters:
+  enable:
+    - gofmt

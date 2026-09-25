@@ -1,4 +1,33 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>neteye-platform/repo-commons"]
+  "extends": ["github>neteye-platform/repo-commons"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [".pre-commit-hooks.yaml", ".pre-commit-config.yaml"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>golang-version) depName=(?<depName>go)\\r?\\n[ \\t]*(?:language_version|golang):[ \\t]*[\\\"'](?<currentValue>[\\d.]+)[\\\"']",
+        "# renovate: datasource=(?<datasource>go) depName=(?<depName>[a-zA-Z0-9._/-]+)\\r?\\n[ \\t]*-[ \\t]*\\S+@(?<currentValue>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Delay updates for pinned hook tooling",
+      "matchPackageNames": ["go", "github.com/yannh/kubeconform", "sigs.k8s.io/kustomize/kustomize/v5"],
+      "matchManagers": ["gomod", "custom.regex"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "matchDepNames": ["go"],
+      "matchManagers": ["gomod", "custom.regex"],
+      "groupName": "Go toolchain"
+    },
+    {
+      "description": "Keep the kubeconform library in go.mod in sync with the hook's kubeconform binary",
+      "matchDepNames": ["github.com/yannh/kubeconform"],
+      "matchManagers": ["gomod", "custom.regex"],
+      "groupName": "kubeconform"
+    }
+  ]
 }
