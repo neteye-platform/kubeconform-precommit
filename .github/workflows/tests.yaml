@@ -14,7 +14,7 @@ concurrency:
 
 env:
   # renovate: datasource=pypi depName=uv
-  UV_VERSION: "0.12.18"
+  UV_VERSION: "0.12.19"
   # renovate: datasource=pypi depName=pre-commit
   PRE_COMMIT_VERSION: "4.6.2"
   # renovate: datasource=pypi depName=prek

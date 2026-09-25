@@ -46,7 +46,7 @@ repos:
       - id: gitleaks
 
   - repo: https://github.com/codespell-project/codespell
-    rev: 2ccb47ff45ad361a21071a7eedda4c37e6ae8c5a # frozen: v2.4.2
+    rev: 57b21406f092110c18776e39b0bda50d37c945c8 # frozen: v2.4.3
     hooks:
       - id: codespell
 
@@ -61,7 +61,7 @@ repos:
       - id: shellcheck
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 01a675ea018f2fb714478a5ffb83fcea8374bb06 # frozen: v0.15.21
+    rev: a56c0b927e6465d37cae3e97d35d4d18ab2b96cd # frozen: v0.16.9
     hooks:
       - id: ruff-check
         args:
@@ -69,33 +69,33 @@ repos:
       - id: ruff-format
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: d9fca3320346514799461a80b0753eb45d707d46 # frozen: 0.11.28
+    rev: 2aeb804518b4373dbf5adb8dddc5466d9a6e6b21 # frozen: 0.12.19
     hooks:
       - id: uv-lock
 
   - repo: https://github.com/ansible/ansible-lint
-    rev: 262624cd0ab22a4221293216856c59671ce7aa5e # frozen: v26.6.0
+    rev: e7f397ad6dfa20d274afa17cd7bbedd84ed136f5 # frozen: v26.9.0
     hooks:
       - id: ansible-lint
 
   - repo: https://github.com/hadolint/hadolint
-    rev: 57e1618d78fd469a92c1e584e8c9313024656623 # frozen: v2.14.0
+    rev: 2eece55955ced00200be9729e9728cb7dacca505 # frozen: v2.15.1
     hooks:
       - id: hadolint-docker
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: 534166213006ec869b773b7ed8c6ebeaad1165d0 # frozen: v0.23.0
+    rev: 916ad0aaa108c64d294101002066f530ea170b10 # frozen: v0.23.3
     hooks:
       - id: markdownlint-cli2
 
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 0987cd776b1839d5b606407ee8301e2cff11a08b # frozen: 44.35.3
+    rev: 45ebaf1cf90ba3ffd8777d42d2b0c309e9f0d360 # frozen: 44.115.2
     hooks:
       - id: renovate-config-validator
         args: [--strict]
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: 27774aaf853a4fd21f1dd5e69439459dc1b26e68 # frozen: v2.13.2
+    rev: 114493f9b3e7257d29e4130f2b4a4aadefbb6845 # frozen: v2.14.0
     hooks:
       - id: golangci-lint-config-verify
       - id: golangci-lint-fmt
