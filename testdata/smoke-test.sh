@@ -31,8 +31,16 @@ run "$@"
 hook_args=(kubeconform-kustomize --files testdata/kustomize/kustomization.yaml)
 run "$@"
 
+# The invalid manifest must fail because kubeconform rejected it, not because
+# of an unrelated setup or network error.
 hook_args=(kubeconform --files testdata/invalid.yaml)
-if run "$@"; then
+if output=$(run "$@" 2>&1); then
   echo "smoke test: expected testdata/invalid.yaml to fail validation" >&2
+  echo "$output" >&2
+  exit 1
+fi
+if [[ $output != *"testdata/invalid.yaml - ConfigMap smoke-test is invalid"* ]]; then
+  echo "smoke test: testdata/invalid.yaml failed for an unexpected reason:" >&2
+  echo "$output" >&2
   exit 1
 fi

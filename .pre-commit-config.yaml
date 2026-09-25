@@ -114,5 +114,5 @@ repos:
         name: check duplicated tool versions
         entry: testdata/check-versions.sh
         language: script
-        files: ^(go\.mod|\.pre-commit-hooks\.yaml|\.github/workflows/tests\.yaml)$
+        files: ^(go\.mod|\.pre-commit-(config|hooks)\.yaml|\.github/workflows/tests\.yaml|testdata/check-versions\.sh)$
         pass_filenames: false
