@@ -16,10 +16,23 @@ repos:
     rev: $(git rev-parse HEAD)
     hooks:
       - id: kubeconform
-        files: ^testdata/valid\.(yaml|json)$
+        files: ^testdata/(valid|invalid)\.(yaml|json)$
       - id: kubeconform-kustomize
         args: [testdata/kustomize, --, -strict]
 EOF
 
-"$@" run --config "$config" --verbose \
-  --files testdata/valid.yaml testdata/valid.json
+run() {
+  "$@" run --config "$config" --verbose "${hook_args[@]}"
+}
+
+hook_args=(kubeconform --files testdata/valid.yaml testdata/valid.json)
+run "$@"
+
+hook_args=(kubeconform-kustomize --files testdata/kustomize/kustomization.yaml)
+run "$@"
+
+hook_args=(kubeconform --files testdata/invalid.yaml)
+if run "$@"; then
+  echo "smoke test: expected testdata/invalid.yaml to fail validation" >&2
+  exit 1
+fi

@@ -84,6 +84,16 @@ func run(args []string, lookup lookupFunc, command runFunc, stdout, stderr io.Wr
 		return exitUsageError
 	}
 
+	if len(overlays) > 1 && (cfg.OutputFormat == "json" || cfg.OutputFormat == "junit" || cfg.OutputFormat == "tap") {
+		_, _ = fmt.Fprintf(
+			stderr,
+			"kubeconform-kustomize: -output %s cannot be combined across multiple overlays (kubeconform runs once per overlay); use text or pretty, or configure one overlay\n",
+			cfg.OutputFormat,
+		)
+
+		return exitUsageError
+	}
+
 	kustomize, kustomizeErr := lookup("kustomize")
 	kubeconform, kubeconformErr := lookup("kubeconform")
 

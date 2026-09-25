@@ -227,6 +227,129 @@ func TestRunRejectsKubeconformHelpAndVersionBeforeExecution(t *testing.T) {
 	}
 }
 
+func TestRunRejectsMachineReadableOutputAcrossMultipleOverlays(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		args   []string
+		format string
+	}{
+		{name: "json", args: []string{"-output", "json"}, format: "json"},
+		{name: "junit", args: []string{"-output", "junit"}, format: "junit"},
+		{name: "tap", args: []string{"-output", "tap"}, format: "tap"},
+		{name: "equals json", args: []string{"-output=json"}, format: "json"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var stderr bytes.Buffer
+
+			status := run(
+				append([]string{"one", "two", "--"}, tt.args...),
+				func(string) (string, error) {
+					t.Fatal("lookup must not run")
+
+					return "", nil
+				},
+				func(string, []string, io.Reader, io.Writer, io.Writer) error {
+					t.Fatal("command must not run")
+
+					return nil
+				},
+				io.Discard,
+				&stderr,
+			)
+			if status != exitUsageError || !strings.Contains(stderr.String(), tt.format) {
+				t.Fatalf("status=%d stderr=%q", status, stderr.String())
+			}
+		})
+	}
+}
+
+func TestRunAllowsPrettyOutputAcrossMultipleOverlays(t *testing.T) {
+	t.Parallel()
+
+	var calls []invocation
+
+	status := run(
+		[]string{"one", "two", "--", "-output", "pretty"},
+		lookupOK,
+		func(name string, args []string, _ io.Reader, stdout io.Writer, _ io.Writer) error {
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...)})
+			if name == "/bin/kustomize" {
+				_, _ = stdout.Write([]byte(args[1]))
+			}
+
+			return nil
+		},
+		io.Discard,
+		io.Discard,
+	)
+	if status != exitOK {
+		t.Fatalf("status = %d", status)
+	}
+
+	if len(calls) != 4 || !reflect.DeepEqual(calls[1].args, []string{"-output", "pretty"}) ||
+		!reflect.DeepEqual(calls[3].args, []string{"-output", "pretty"}) {
+		t.Fatalf("calls = %#v", calls)
+	}
+}
+
+func TestRunForwardsConsumerSchemaLocationsAcrossMultipleOverlays(t *testing.T) {
+	t.Parallel()
+
+	kubeconformArgs := []string{
+		"-schema-location",
+		"default",
+		"-schema-location",
+		"https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json",
+		"-schema-location",
+		"https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/{{.NormalizedKubernetesVersion}}/{{.ResourceKind}}.json",
+	}
+	var calls []invocation
+
+	status := run(
+		append([]string{"apps/a", "apps/b", "--"}, kubeconformArgs...),
+		lookupOK,
+		func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+			var input []byte
+			if stdin != nil {
+				var err error
+
+				input, err = io.ReadAll(stdin)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
+			if name == "/bin/kustomize" {
+				_, _ = stdout.Write([]byte(args[1]))
+			}
+
+			return nil
+		},
+		io.Discard,
+		io.Discard,
+	)
+	if status != exitOK {
+		t.Fatalf("status = %d", status)
+	}
+
+	want := []invocation{
+		{name: "/bin/kustomize", args: []string{"build", "apps/a"}},
+		{name: "/bin/kubeconform", args: kubeconformArgs, stdin: []byte("apps/a")},
+		{name: "/bin/kustomize", args: []string{"build", "apps/b"}},
+		{name: "/bin/kubeconform", args: kubeconformArgs, stdin: []byte("apps/b")},
+	}
+	if !reflect.DeepEqual(calls, want) {
+		t.Fatalf("calls = %#v, want %#v", calls, want)
+	}
+}
+
 func TestRunOneOverlayForwardsDiscreteArgumentsAndBytes(t *testing.T) {
 	t.Parallel()
 

@@ -78,6 +78,11 @@ through stdin. Arguments after `--` must therefore be kubeconform flags:
 positional file or folder inputs, `-h`, and `-v` are rejected with exit `2`,
 because they would make kubeconform skip the rendered overlay.
 
+kubeconform runs once per overlay, so with more than one overlay the
+`json`, `junit`, and `tap` output formats are rejected with exit `2`: their
+separate reports cannot be combined into one valid document. Use `text` or
+`pretty`, or configure a single overlay per hook.
+
 The public Kustomize hook intentionally has no file-type filter because a
 generator can produce non-YAML source files. Consumers that want selective
 execution can add a `files` regular expression in their own hook configuration.

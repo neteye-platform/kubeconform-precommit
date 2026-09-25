@@ -19,6 +19,8 @@ env:
   PRE_COMMIT_VERSION: "4.6.2"
   # renovate: datasource=pypi depName=prek
   PREK_VERSION: "0.5.3"
+  # Compatibility floor from .pre-commit-hooks.yaml; intentionally not managed by Renovate.
+  MIN_PRE_COMMIT_VERSION: "3.0.0"
 
 jobs:
   tests:
@@ -37,6 +39,9 @@ jobs:
 
       - name: Smoke-test hook with pre-commit
         run: ./testdata/smoke-test.sh uvx --from "pre-commit==${PRE_COMMIT_VERSION}" pre-commit
+
+      - name: Smoke-test minimum supported pre-commit version
+        run: ./testdata/smoke-test.sh uvx --from "pre-commit==${MIN_PRE_COMMIT_VERSION}" pre-commit
 
       - name: Smoke-test hook with prek
         run: ./testdata/smoke-test.sh uvx --from "prek==${PREK_VERSION}" prek

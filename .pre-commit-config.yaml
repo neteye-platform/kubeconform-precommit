@@ -110,3 +110,9 @@ repos:
         language: golang
         files: (\.go|^go\.mod)$
         pass_filenames: false
+      - id: check-versions
+        name: check duplicated tool versions
+        entry: testdata/check-versions.sh
+        language: script
+        files: ^(go\.mod|\.pre-commit-hooks\.yaml|\.github/workflows/tests\.yaml)$
+        pass_filenames: false
