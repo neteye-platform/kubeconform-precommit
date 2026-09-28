@@ -15,11 +15,11 @@ concurrency:
 env:
   # renovate: datasource=pypi depName=uv
   UV_VERSION: "0.12.19"
-  # Compatibility floor from .pre-commit-hooks.yaml; intentionally not Renovate-managed.
+  # Minimum compatible pre-commit version; intentionally not Renovate-managed.
   MIN_PRE_COMMIT_VERSION: "3.0.0"
   # renovate: datasource=pypi depName=pre-commit
   PRE_COMMIT_VERSION: "4.6.2"
-  # Compatibility floor; intentionally not Renovate-managed.
+  # Minimum compatible prek version; intentionally not Renovate-managed.
   MIN_PREK_VERSION: "0.2.4"
   # renovate: datasource=pypi depName=prek
   PREK_VERSION: "0.5.3"
