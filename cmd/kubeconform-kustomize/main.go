@@ -173,11 +173,12 @@ func expandOverlays(overlays []string) ([]string, error) {
 		}
 
 		for _, match := range matches {
-			if _, ok := seen[match]; ok {
+			key := filepath.Clean(match)
+			if _, ok := seen[key]; ok {
 				continue
 			}
 
-			seen[match] = struct{}{}
+			seen[key] = struct{}{}
 			expanded = append(expanded, match)
 		}
 	}

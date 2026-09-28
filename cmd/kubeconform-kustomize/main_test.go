@@ -99,6 +99,74 @@ func TestExpandOverlaysSupportsStandardNonRecursivePatterns(t *testing.T) {
 	}
 }
 
+func TestExpandOverlaysDeduplicatesEquivalentSpellings(t *testing.T) {
+	chdirToFixtureWithSingleOverlay(t)
+
+	const explicit = "./a"
+	const pattern = "*"
+
+	got, err := expandOverlays([]string{explicit, pattern})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{explicit}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expandOverlays = %#v, want %#v", got, want)
+	}
+}
+
+func TestRunTreatsEquivalentSpellingsAsOneOverlayForOutputFormat(t *testing.T) {
+	chdirToFixtureWithSingleOverlay(t)
+
+	const explicit = "./a"
+	const pattern = "*"
+	calls := 0
+
+	status := run(
+		[]string{explicit, pattern, "--", "-output", "json"},
+		lookupOK,
+		func(name string, args []string, _ io.Reader, stdout io.Writer, _ io.Writer) error {
+			calls++
+			if name == "/bin/kustomize" {
+				_, _ = stdout.Write([]byte("{}"))
+			}
+
+			return nil
+		},
+		io.Discard,
+		io.Discard,
+	)
+	if status != exitOK || calls != 2 {
+		t.Fatalf("status=%d calls=%d, want one overlay built and validated", status, calls)
+	}
+}
+
+// chdirToFixtureWithSingleOverlay creates a temporary directory containing a
+// single "a" subdirectory, changes into it for the duration of the test, and
+// restores the previous working directory on cleanup.
+func chdirToFixtureWithSingleOverlay(t *testing.T) {
+	t.Helper()
+
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "a"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	previousDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(previousDir); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
 func TestRunWithoutOverlaysUsesUsageBeforeLookup(t *testing.T) {
 	t.Parallel()
 
