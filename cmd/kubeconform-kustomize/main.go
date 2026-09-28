@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/yannh/kubeconform/pkg/config"
@@ -50,6 +51,13 @@ func run(args []string, lookup lookupFunc, command runFunc, stdout, stderr io.Wr
 	overlays, kubeconformArgs := splitArgs(args)
 	if len(overlays) == 0 {
 		_, _ = fmt.Fprintln(stderr, "usage: kubeconform-kustomize <overlay> [<overlay> ...] -- [<kubeconform args> ...]")
+
+		return exitUsageError
+	}
+
+	overlays, err := expandOverlays(overlays)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "kubeconform-kustomize: %s\n", err)
 
 		return exitUsageError
 	}
@@ -144,4 +152,35 @@ func splitArgs(args []string) ([]string, []string) {
 	}
 
 	return args, nil
+}
+
+func expandOverlays(overlays []string) ([]string, error) {
+	expanded := make([]string, 0, len(overlays))
+	seen := make(map[string]struct{}, len(overlays))
+
+	for _, overlay := range overlays {
+		matches := []string{overlay}
+		if strings.ContainsAny(overlay, "*?[") {
+			var err error
+
+			matches, err = filepath.Glob(overlay)
+			if err != nil {
+				return nil, fmt.Errorf("invalid overlay glob %q: %w", overlay, err)
+			}
+			if len(matches) == 0 {
+				return nil, fmt.Errorf("overlay glob %q matched no paths", overlay)
+			}
+		}
+
+		for _, match := range matches {
+			if _, ok := seen[match]; ok {
+				continue
+			}
+
+			seen[match] = struct{}{}
+			expanded = append(expanded, match)
+		}
+	}
+
+	return expanded, nil
 }

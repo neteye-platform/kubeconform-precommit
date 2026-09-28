@@ -58,8 +58,8 @@ repos:
     hooks:
       - id: kubeconform-kustomize
         args:
-          - overlays/development
-          - overlays/production
+          - apps/infra/argocd/envs/dev
+          - apps/infra/argocd/envs/prod
           - --
           - -strict
           - -schema-location
@@ -67,8 +67,21 @@ repos:
 ```
 
 `kubeconform-kustomize` has `pass_filenames: false`; configure every overlay
-path explicitly. It does no custom globbing, so paths are passed literally to
-`kustomize build`. The first `--` separates overlay paths from native
+path explicitly or use standard non-recursive filepath globs:
+
+```yaml
+args:
+  - apps/infra/argocd/envs/*
+  - --
+  - -strict
+```
+
+The wrapper (not a shell) expands glob targets deterministically before passing
+each resulting path to `kustomize build`; exact paths, including nonexistent
+ones, are passed literally. A target containing `*`, `?`, or `[` is a pattern.
+Unmatched or malformed patterns exit `2`; `**` has no special recursive
+extension. Use standard `filepath.Glob` escaping when a literal target contains
+a glob metacharacter. The first `--` separates overlay paths from native
 kubeconform arguments. The separator is optional; without it, every argument
 is an overlay. Arguments after it are forwarded exactly as configured (including
 spaces within one YAML string), without shell parsing.
