@@ -25,7 +25,7 @@ run() {
   "$@" run --config "$config" --verbose "${hook_args[@]}"
 }
 
-hook_args=(kubeconform --files testdata/valid.yaml testdata/valid.json)
+hook_args=(kubeconform --files testdata/valid.yaml --files testdata/valid.json)
 run "$@"
 
 hook_args=(kubeconform-kustomize --files testdata/kustomize/kustomization.yaml)
