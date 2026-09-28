@@ -21,7 +21,7 @@ repos:
       - id: kubeconform
         files: ^testdata/(valid|invalid)\.(yaml|json)$
       - id: kubeconform-kustomize
-        args: [testdata/kustomize, --, -strict]
+        args: ["testdata/kustomize*", --, -strict]
 EOF
 
 run() {

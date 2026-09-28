@@ -42,6 +42,63 @@ func TestSplitArgsPreservesSeparatorArgumentsVerbatim(t *testing.T) {
 	}
 }
 
+func TestExpandOverlaysSupportsStandardNonRecursivePatterns(t *testing.T) {
+	dir := t.TempDir()
+	for _, path := range []string{
+		"app-a",
+		"app-b",
+		"env-dev",
+		"env-prod",
+		"env-qa",
+		filepath.Join("nested", "child"),
+	} {
+		if err := os.MkdirAll(filepath.Join(dir, path), 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tests := []struct {
+		name    string
+		pattern string
+		want    []string
+	}{
+		{
+			name:    "question mark",
+			pattern: filepath.Join(dir, "app-?"),
+			want:    []string{filepath.Join(dir, "app-a"), filepath.Join(dir, "app-b")},
+		},
+		{
+			name:    "character class",
+			pattern: filepath.Join(dir, "env-[dp]*"),
+			want:    []string{filepath.Join(dir, "env-dev"), filepath.Join(dir, "env-prod")},
+		},
+		{
+			name:    "double star is not recursive",
+			pattern: filepath.Join(dir, "**"),
+			want: []string{
+				filepath.Join(dir, "app-a"),
+				filepath.Join(dir, "app-b"),
+				filepath.Join(dir, "env-dev"),
+				filepath.Join(dir, "env-prod"),
+				filepath.Join(dir, "env-qa"),
+				filepath.Join(dir, "nested"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := expandOverlays([]string{tt.pattern})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("expandOverlays(%q) = %#v, want %#v", tt.pattern, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRunWithoutOverlaysUsesUsageBeforeLookup(t *testing.T) {
 	t.Parallel()
 
@@ -823,7 +880,7 @@ func TestRunAllowsTextAndPrettyForExpandedGlob(t *testing.T) {
 
 func TestRunExpandsConsumerStyleOverlayGlobDeterministically(t *testing.T) {
 	dir := t.TempDir()
-	for _, environment := range []string{"necloud-dev-eus1-01", "necloud-pp-euc1-01", "necloud-pp-eus1-01", "necloud-prod-eus1-01"} {
+	for _, environment := range []string{"example-development-a", "example-staging-a", "example-staging-b", "example-production-a"} {
 		if err := os.MkdirAll(filepath.Join(dir, "apps", "infra", "argocd", "envs", environment), 0o750); err != nil {
 			t.Fatal(err)
 		}
@@ -875,10 +932,10 @@ func TestRunExpandsConsumerStyleOverlayGlobDeterministically(t *testing.T) {
 		}
 	}
 	want := []string{
-		"apps/infra/argocd/envs/necloud-dev-eus1-01",
-		"apps/infra/argocd/envs/necloud-pp-euc1-01",
-		"apps/infra/argocd/envs/necloud-pp-eus1-01",
-		"apps/infra/argocd/envs/necloud-prod-eus1-01",
+		"apps/infra/argocd/envs/example-development-a",
+		"apps/infra/argocd/envs/example-production-a",
+		"apps/infra/argocd/envs/example-staging-a",
+		"apps/infra/argocd/envs/example-staging-b",
 	}
 	if !reflect.DeepEqual(built, want) || len(calls) != 8 {
 		t.Fatalf("built=%#v calls=%#v, want %#v", built, calls, want)

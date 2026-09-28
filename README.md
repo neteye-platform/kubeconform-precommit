@@ -7,7 +7,7 @@ Kustomize overlays.
 ## Provisioning
 
 The hooks work with upstream [pre-commit](https://pre-commit.com/) 3.0.0 or
-later and [prek](https://github.com/j178/prek) 0.3.6 or later. The hook manager
+later and [prek](https://prek.j178.dev) 0.3.6 or later. The hook manager
 provisions an isolated environment with the pinned Go toolchain, kubeconform,
 kustomize, and this hook repository, so no manual Go, Python, Docker, or PATH
 setup is needed. The first installation uses the network; later runs reuse the
@@ -80,11 +80,10 @@ The wrapper (not a shell) expands glob targets deterministically before passing
 each resulting path to `kustomize build`; exact paths, including nonexistent
 ones, are passed literally. A target containing `*`, `?`, or `[` is a pattern.
 Unmatched or malformed patterns exit `2`; `**` has no special recursive
-extension. Use standard `filepath.Glob` escaping when a literal target contains
-a glob metacharacter. The first `--` separates overlay paths from native
-kubeconform arguments. The separator is optional; without it, every argument
-is an overlay. Arguments after it are forwarded exactly as configured (including
-spaces within one YAML string), without shell parsing.
+extension. The first `--` separates overlay paths from native kubeconform
+arguments. The separator is optional; without it, every argument is an overlay.
+Arguments after it are forwarded exactly as configured (including spaces within
+one YAML string), without shell parsing.
 
 The rendered output of `kustomize build` is always what kubeconform validates,
 through stdin. Arguments after `--` must therefore be kubeconform flags:
