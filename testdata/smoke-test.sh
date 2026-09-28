@@ -8,11 +8,14 @@ set -euo pipefail
 config="$(mktemp)"
 trap 'rm -f "$config"' EXIT
 
-# The repository path must be absolute: hook managers clone it from their own
+repo_path="$(git rev-parse --show-toplevel)"
+repo_url="file://${repo_path}"
+
+# The local file URL causes the hook manager to clone the repository from its
 # cache directory. Both hooks share one managed Go environment.
 cat > "$config" <<EOF
 repos:
-  - repo: $PWD
+  - repo: "$repo_url"
     rev: $(git rev-parse HEAD)
     hooks:
       - id: kubeconform

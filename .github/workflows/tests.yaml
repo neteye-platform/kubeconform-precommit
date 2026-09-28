@@ -20,7 +20,7 @@ env:
   # renovate: datasource=pypi depName=pre-commit
   PRE_COMMIT_VERSION: "4.6.2"
   # Minimum compatible prek version; intentionally not Renovate-managed.
-  MIN_PREK_VERSION: "0.1.0"
+  MIN_PREK_VERSION: "0.0.23"
   # renovate: datasource=pypi depName=prek
   PREK_VERSION: "0.5.3"
 
