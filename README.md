@@ -67,11 +67,23 @@ repos:
 ```
 
 `kubeconform-kustomize` has `pass_filenames: false`; configure every overlay
-path explicitly. It does no custom globbing, so paths are passed literally to
-`kustomize build`. The first `--` separates overlay paths from native
-kubeconform arguments. The separator is optional; without it, every argument
-is an overlay. Arguments after it are forwarded exactly as configured (including
-spaces within one YAML string), without shell parsing.
+path explicitly or use standard non-recursive filepath globs:
+
+```yaml
+args:
+  - overlays/*
+  - --
+  - -strict
+```
+
+The wrapper (not a shell) expands glob targets deterministically before passing
+each resulting path to `kustomize build`; exact paths, including nonexistent
+ones, are passed literally. A target containing `*`, `?`, or `[` is a pattern.
+Unmatched or malformed patterns exit `2`; `**` has no special recursive
+extension. The first `--` separates overlay paths from native kubeconform
+arguments. The separator is optional; without it, every argument is an overlay.
+Arguments after it are forwarded exactly as configured (including spaces within
+one YAML string), without shell parsing.
 
 The rendered output of `kustomize build` is always what kubeconform validates,
 through stdin. Arguments after `--` must therefore be kubeconform flags:

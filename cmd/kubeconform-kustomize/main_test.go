@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -38,6 +40,119 @@ func TestSplitArgsPreservesSeparatorArgumentsVerbatim(t *testing.T) {
 	if !reflect.DeepEqual(kubeconformArgs, want) {
 		t.Fatalf("kubeconform args = %#v, want %#v", kubeconformArgs, want)
 	}
+}
+
+func TestExpandOverlaysSupportsStandardNonRecursivePatterns(t *testing.T) {
+	dir := t.TempDir()
+	for _, path := range []string{
+		"app-a",
+		"app-b",
+		"env-dev",
+		"env-prod",
+		"env-qa",
+		filepath.Join("nested", "child"),
+	} {
+		if err := os.MkdirAll(filepath.Join(dir, path), 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tests := []struct {
+		name    string
+		pattern string
+		want    []string
+	}{
+		{
+			name:    "question mark",
+			pattern: filepath.Join(dir, "app-?"),
+			want:    []string{filepath.Join(dir, "app-a"), filepath.Join(dir, "app-b")},
+		},
+		{
+			name:    "character class",
+			pattern: filepath.Join(dir, "env-[dp]*"),
+			want:    []string{filepath.Join(dir, "env-dev"), filepath.Join(dir, "env-prod")},
+		},
+		{
+			name:    "double star is not recursive",
+			pattern: filepath.Join(dir, "**"),
+			want: []string{
+				filepath.Join(dir, "app-a"),
+				filepath.Join(dir, "app-b"),
+				filepath.Join(dir, "env-dev"),
+				filepath.Join(dir, "env-prod"),
+				filepath.Join(dir, "env-qa"),
+				filepath.Join(dir, "nested"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := expandOverlays([]string{tt.pattern})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("expandOverlays(%q) = %#v, want %#v", tt.pattern, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExpandOverlaysDeduplicatesEquivalentSpellings(t *testing.T) {
+	chdirToFixtureWithSingleOverlay(t)
+
+	const explicit = "./a"
+	const pattern = "*"
+
+	got, err := expandOverlays([]string{explicit, pattern})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{explicit}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expandOverlays = %#v, want %#v", got, want)
+	}
+}
+
+func TestRunTreatsEquivalentSpellingsAsOneOverlayForOutputFormat(t *testing.T) {
+	chdirToFixtureWithSingleOverlay(t)
+
+	const explicit = "./a"
+	const pattern = "*"
+	calls := 0
+
+	status := run(
+		[]string{explicit, pattern, "--", "-output", "json"},
+		lookupOK,
+		func(name string, args []string, _ io.Reader, stdout io.Writer, _ io.Writer) error {
+			calls++
+			if name == "/bin/kustomize" {
+				_, _ = stdout.Write([]byte("{}"))
+			}
+
+			return nil
+		},
+		io.Discard,
+		io.Discard,
+	)
+	if status != exitOK || calls != 2 {
+		t.Fatalf("status=%d calls=%d, want one overlay built and validated", status, calls)
+	}
+}
+
+// chdirToFixtureWithSingleOverlay creates a temporary directory containing a
+// single "a" subdirectory and makes it the working directory for the test.
+func chdirToFixtureWithSingleOverlay(t *testing.T) {
+	t.Helper()
+
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "a"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Chdir(dir)
 }
 
 func TestRunWithoutOverlaysUsesUsageBeforeLookup(t *testing.T) {
@@ -599,6 +714,276 @@ func TestRunReportsKubeconformExecutionErrorOnStderr(t *testing.T) {
 	if !strings.Contains(stderr.String(), "overlay") ||
 		!strings.Contains(stderr.String(), "exec format error") {
 		t.Fatalf("stderr = %q, want it to mention the overlay and the underlying error", stderr.String())
+	}
+}
+
+func TestRunRetainsLiteralOverlayWithoutGlobbing(t *testing.T) {
+	literal := filepath.Join(t.TempDir(), "does-not-exist")
+	var calls []invocation
+
+	status := run(
+		[]string{literal, "--", "-strict"},
+		lookupOK,
+		func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...)})
+			if name == "/bin/kustomize" {
+				_, _ = stdout.Write([]byte("rendered"))
+			}
+
+			return nil
+		},
+		io.Discard,
+		io.Discard,
+	)
+	if status != exitOK {
+		t.Fatalf("status = %d", status)
+	}
+
+	want := []invocation{
+		{name: "/bin/kustomize", args: []string{"build", literal}},
+		{name: "/bin/kubeconform", args: []string{"-strict"}},
+	}
+	if !reflect.DeepEqual(calls, want) {
+		t.Fatalf("calls = %#v, want %#v", calls, want)
+	}
+}
+
+func TestRunExpandsGlobTargetsInOrderAndDeduplicates(t *testing.T) {
+	dir := t.TempDir()
+	first := filepath.Join(dir, "first")
+	a := filepath.Join(dir, "overlay-a")
+	b := filepath.Join(dir, "overlay-b")
+	last := filepath.Join(dir, "last")
+	for _, path := range []string{first, a, b, last} {
+		if err := os.Mkdir(path, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	kubeconformArgs := []string{"-strict", "-schema-location", "https://example.invalid/{{.ResourceKind}}.json"}
+	var calls []invocation
+
+	status := run(
+		append([]string{b, filepath.Join(dir, "overlay-*"), a, last, "--"}, kubeconformArgs...),
+		lookupOK,
+		func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+			var input []byte
+			if stdin != nil {
+				var err error
+
+				input, err = io.ReadAll(stdin)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
+			if name == "/bin/kustomize" {
+				_, _ = stdout.Write([]byte(args[1]))
+			}
+
+			return nil
+		},
+		io.Discard,
+		io.Discard,
+	)
+	if status != exitOK {
+		t.Fatalf("status = %d", status)
+	}
+
+	want := []invocation{
+		{name: "/bin/kustomize", args: []string{"build", b}},
+		{name: "/bin/kubeconform", args: kubeconformArgs, stdin: []byte(b)},
+		{name: "/bin/kustomize", args: []string{"build", a}},
+		{name: "/bin/kubeconform", args: kubeconformArgs, stdin: []byte(a)},
+		{name: "/bin/kustomize", args: []string{"build", last}},
+		{name: "/bin/kubeconform", args: kubeconformArgs, stdin: []byte(last)},
+	}
+	if !reflect.DeepEqual(calls, want) {
+		t.Fatalf("calls = %#v, want %#v", calls, want)
+	}
+}
+
+func TestRunRejectsInvalidOrUnmatchedGlobBeforeParsingOrExecution(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		pattern string
+		want    string
+	}{
+		{name: "malformed", pattern: filepath.Join(t.TempDir(), "["), want: "invalid overlay glob"},
+		{name: "unmatched", pattern: filepath.Join(t.TempDir(), "missing-*"), want: "matched no paths"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var stderr bytes.Buffer
+			lookups := 0
+
+			status := run(
+				[]string{tt.pattern, "--", "-n", "not-a-number"},
+				func(string) (string, error) {
+					lookups++
+					t.Fatal("lookup must not run")
+
+					return "", nil
+				},
+				func(string, []string, io.Reader, io.Writer, io.Writer) error {
+					t.Fatal("command must not run")
+
+					return nil
+				},
+				io.Discard,
+				&stderr,
+			)
+			if status != exitUsageError || lookups != 0 || !strings.Contains(stderr.String(), tt.want) ||
+				!strings.Contains(stderr.String(), tt.pattern) ||
+				(tt.name == "malformed" && !strings.Contains(stderr.String(), filepath.ErrBadPattern.Error())) {
+				t.Fatalf("status=%d lookups=%d stderr=%q", status, lookups, stderr.String())
+			}
+		})
+	}
+}
+
+func TestRunDoesNotExpandArgumentsAfterSeparator(t *testing.T) {
+	pattern := "https://example.invalid/schemas/*/{{.ResourceKind}}.json"
+	var calls []invocation
+
+	status := run(
+		[]string{"overlay", "--", "-schema-location", pattern},
+		lookupOK,
+		func(name string, args []string, _ io.Reader, stdout io.Writer, _ io.Writer) error {
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...)})
+			if name == "/bin/kustomize" {
+				_, _ = stdout.Write([]byte("rendered"))
+			}
+
+			return nil
+		},
+		io.Discard,
+		io.Discard,
+	)
+	if status != exitOK || len(calls) != 2 || !reflect.DeepEqual(calls[1].args, []string{"-schema-location", pattern}) {
+		t.Fatalf("status=%d calls=%#v", status, calls)
+	}
+}
+
+func TestRunUsesExpandedGlobCountForOutputFormats(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"one", "two"} {
+		if err := os.Mkdir(filepath.Join(dir, name), 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pattern := filepath.Join(dir, "*")
+	for _, format := range []string{"json", "junit", "tap"} {
+		t.Run(format, func(t *testing.T) {
+			var stderr bytes.Buffer
+
+			status := run(
+				[]string{pattern, "--", "-output", format},
+				func(string) (string, error) {
+					t.Fatal("lookup must not run")
+
+					return "", nil
+				},
+				func(string, []string, io.Reader, io.Writer, io.Writer) error {
+					t.Fatal("command must not run")
+
+					return nil
+				},
+				io.Discard,
+				&stderr,
+			)
+			if status != exitUsageError || !strings.Contains(stderr.String(), format) {
+				t.Fatalf("status=%d stderr=%q", status, stderr.String())
+			}
+		})
+	}
+}
+
+func TestRunAllowsTextAndPrettyForExpandedGlob(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"one", "two"} {
+		if err := os.Mkdir(filepath.Join(dir, name), 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pattern := filepath.Join(dir, "*")
+	for _, format := range []string{"text", "pretty"} {
+		t.Run(format, func(t *testing.T) {
+			calls := 0
+
+			status := run(
+				[]string{pattern, "--", "-output", format},
+				lookupOK,
+				func(name string, args []string, _ io.Reader, stdout io.Writer, _ io.Writer) error {
+					calls++
+					if name == "/bin/kustomize" {
+						_, _ = stdout.Write([]byte(args[1]))
+					}
+
+					return nil
+				},
+				io.Discard,
+				io.Discard,
+			)
+			if status != exitOK || calls != 4 {
+				t.Fatalf("status=%d calls=%d", status, calls)
+			}
+		})
+	}
+}
+
+func TestRunExpandsConsumerStyleOverlayGlobDeterministically(t *testing.T) {
+	dir := t.TempDir()
+	for _, environment := range []string{"example-development-a", "example-staging-a", "example-staging-b", "example-production-a"} {
+		if err := os.MkdirAll(filepath.Join(dir, "apps", "infra", "argocd", "envs", environment), 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Chdir(dir)
+
+	kubeconformArgs := []string{"-strict", "-schema-location", "default"}
+	var calls []invocation
+	status := run(
+		append([]string{"apps/infra/argocd/envs/*", "--"}, kubeconformArgs...),
+		lookupOK,
+		func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+			var input []byte
+			if stdin != nil {
+				input, _ = io.ReadAll(stdin)
+			}
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
+			if name == "/bin/kustomize" {
+				_, _ = stdout.Write([]byte(args[1]))
+			}
+
+			return nil
+		},
+		io.Discard,
+		io.Discard,
+	)
+	if status != exitOK {
+		t.Fatalf("status = %d", status)
+	}
+
+	var built []string
+	for _, call := range calls {
+		if call.name == "/bin/kustomize" {
+			built = append(built, call.args[1])
+		} else if !reflect.DeepEqual(call.args, kubeconformArgs) {
+			t.Fatalf("kubeconform args = %#v, want %#v", call.args, kubeconformArgs)
+		}
+	}
+	want := []string{
+		"apps/infra/argocd/envs/example-development-a",
+		"apps/infra/argocd/envs/example-production-a",
+		"apps/infra/argocd/envs/example-staging-a",
+		"apps/infra/argocd/envs/example-staging-b",
+	}
+	if !reflect.DeepEqual(built, want) || len(calls) != 8 {
+		t.Fatalf("built=%#v calls=%#v, want %#v", built, calls, want)
 	}
 }
 
