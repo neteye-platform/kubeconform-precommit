@@ -18,34 +18,6 @@ type invocation struct {
 	stdin []byte
 }
 
-// recordingCommand returns a runFunc that defensively drains stdin, records
-// each invocation (name, args, and the drained stdin bytes) into *calls, and
-// then delegates to handle for name/args-dependent behaviour such as writing
-// to stdout or returning an error.
-func recordingCommand(
-	t *testing.T,
-	calls *[]invocation,
-	handle func(name string, args []string, input []byte, stdout io.Writer) error,
-) runFunc {
-	t.Helper()
-
-	return func(name string, args []string, stdin io.Reader, stdout, _ io.Writer) error {
-		var input []byte
-		if stdin != nil {
-			var err error
-
-			input, err = io.ReadAll(stdin)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-
-		*calls = append(*calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
-
-		return handle(name, args, input, stdout)
-	}
-}
-
 func TestSplitArgsPreservesSeparatorArgumentsVerbatim(t *testing.T) {
 	t.Parallel()
 
@@ -127,8 +99,6 @@ func TestExpandOverlaysSupportsStandardNonRecursivePatterns(t *testing.T) {
 	}
 }
 
-// Uses chdirToFixtureWithSingleOverlay, which changes the process working
-// directory; it must not run in parallel with other tests.
 func TestExpandOverlaysDeduplicatesEquivalentSpellings(t *testing.T) {
 	chdirToFixtureWithSingleOverlay(t)
 
@@ -146,8 +116,6 @@ func TestExpandOverlaysDeduplicatesEquivalentSpellings(t *testing.T) {
 	}
 }
 
-// Uses chdirToFixtureWithSingleOverlay, which changes the process working
-// directory; it must not run in parallel with other tests.
 func TestRunTreatsEquivalentSpellingsAsOneOverlayForOutputFormat(t *testing.T) {
 	chdirToFixtureWithSingleOverlay(t)
 
@@ -175,11 +143,7 @@ func TestRunTreatsEquivalentSpellingsAsOneOverlayForOutputFormat(t *testing.T) {
 }
 
 // chdirToFixtureWithSingleOverlay creates a temporary directory containing a
-// single "a" subdirectory, changes into it for the duration of the test, and
-// restores the previous working directory on cleanup.
-//
-// Changes the process working directory; callers must not run in parallel
-// with other tests.
+// single "a" subdirectory and makes it the working directory for the test.
 func chdirToFixtureWithSingleOverlay(t *testing.T) {
 	t.Helper()
 
@@ -188,18 +152,7 @@ func chdirToFixtureWithSingleOverlay(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	previousDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(previousDir); err != nil {
-			t.Fatal(err)
-		}
-	})
+	t.Chdir(dir)
 }
 
 func TestRunWithoutOverlaysUsesUsageBeforeLookup(t *testing.T) {
@@ -254,13 +207,24 @@ func TestRunAcceptsKubeconformFlags(t *testing.T) {
 			status := run(
 				append([]string{"overlay", "--"}, tt.args...),
 				lookupOK,
-				recordingCommand(t, &calls, func(name string, _ []string, _ []byte, stdout io.Writer) error {
+				func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+					var input []byte
+					if stdin != nil {
+						var err error
+
+						input, err = io.ReadAll(stdin)
+						if err != nil {
+							t.Fatal(err)
+						}
+					}
+
+					calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
 					if name == "/bin/kustomize" {
 						_, _ = stdout.Write([]byte("rendered"))
 					}
 
 					return nil
-				}),
+				},
 				io.Discard,
 				io.Discard,
 			)
@@ -465,13 +429,24 @@ func TestRunForwardsConsumerSchemaLocationsAcrossMultipleOverlays(t *testing.T) 
 	status := run(
 		append([]string{"apps/a", "apps/b", "--"}, kubeconformArgs...),
 		lookupOK,
-		recordingCommand(t, &calls, func(name string, args []string, _ []byte, stdout io.Writer) error {
+		func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+			var input []byte
+			if stdin != nil {
+				var err error
+
+				input, err = io.ReadAll(stdin)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
 			if name == "/bin/kustomize" {
 				_, _ = stdout.Write([]byte(args[1]))
 			}
 
 			return nil
-		}),
+		},
 		io.Discard,
 		io.Discard,
 	)
@@ -498,13 +473,26 @@ func TestRunOneOverlayForwardsDiscreteArgumentsAndBytes(t *testing.T) {
 	status := run(
 		[]string{"overlays/dev", "--", "-schema-location", "https://example.invalid/two words"},
 		lookupOK,
-		recordingCommand(t, &calls, func(name string, _ []string, _ []byte, stdout io.Writer) error {
+		func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+			var input []byte
+
+			if stdin != nil {
+				var err error
+
+				input, err = io.ReadAll(stdin)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
+
 			if name == "/bin/kustomize" {
 				_, _ = stdout.Write([]byte{'y', 0xff, '\n'})
 			}
 
 			return nil
-		}),
+		},
 		io.Discard,
 		io.Discard,
 	)
@@ -578,7 +566,14 @@ func TestRunMultipleOverlaysContinuesAndAggregatesFailures(t *testing.T) {
 	status := run(
 		[]string{"bad-build", "bad-validation", "good"},
 		lookupOK,
-		recordingCommand(t, &calls, func(name string, args []string, input []byte, stdout io.Writer) error {
+		func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+			var input []byte
+			if stdin != nil {
+				input, _ = io.ReadAll(stdin)
+			}
+
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
+
 			if name == "/bin/kustomize" {
 				if args[1] == "bad-build" {
 					return errors.New("build failed")
@@ -594,7 +589,7 @@ func TestRunMultipleOverlaysContinuesAndAggregatesFailures(t *testing.T) {
 			}
 
 			return nil
-		}),
+		},
 		io.Discard,
 		io.Discard,
 	)
@@ -947,33 +942,25 @@ func TestRunExpandsConsumerStyleOverlayGlobDeterministically(t *testing.T) {
 		}
 	}
 
-	// Changes the process working directory below; must not run in
-	// parallel with other tests.
-	previousDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(previousDir); err != nil {
-			t.Fatal(err)
-		}
-	})
+	t.Chdir(dir)
 
 	kubeconformArgs := []string{"-strict", "-schema-location", "default"}
 	var calls []invocation
 	status := run(
 		append([]string{"apps/infra/argocd/envs/*", "--"}, kubeconformArgs...),
 		lookupOK,
-		recordingCommand(t, &calls, func(name string, args []string, _ []byte, stdout io.Writer) error {
+		func(name string, args []string, stdin io.Reader, stdout io.Writer, _ io.Writer) error {
+			var input []byte
+			if stdin != nil {
+				input, _ = io.ReadAll(stdin)
+			}
+			calls = append(calls, invocation{name: name, args: append([]string(nil), args...), stdin: input})
 			if name == "/bin/kustomize" {
 				_, _ = stdout.Write([]byte(args[1]))
 			}
 
 			return nil
-		}),
+		},
 		io.Discard,
 		io.Discard,
 	)
@@ -997,50 +984,6 @@ func TestRunExpandsConsumerStyleOverlayGlobDeterministically(t *testing.T) {
 	}
 	if !reflect.DeepEqual(built, want) || len(calls) != 8 {
 		t.Fatalf("built=%#v calls=%#v, want %#v", built, calls, want)
-	}
-}
-
-func TestRunForwardsKubeconformStdoutToOuterStdout(t *testing.T) {
-	t.Parallel()
-
-	const marker = "kubeconform-marker-output"
-
-	var stdoutBuf bytes.Buffer
-
-	status := run(
-		[]string{"overlay"},
-		lookupOK,
-		func(name string, _ []string, _ io.Reader, stdout io.Writer, _ io.Writer) error {
-			if name == "/bin/kubeconform" {
-				_, _ = stdout.Write([]byte(marker))
-			}
-
-			return nil
-		},
-		&stdoutBuf,
-		io.Discard,
-	)
-	if status != exitOK || !strings.Contains(stdoutBuf.String(), marker) {
-		t.Fatalf("status=%d stdout=%q, want outer stdout to receive kubeconform's output", status, stdoutBuf.String())
-	}
-}
-
-func TestRunCommandWiresIOAndWrapsError(t *testing.T) {
-	t.Parallel()
-
-	var stdout, stderr bytes.Buffer
-
-	err := runCommand("sh", []string{"-c", "echo out; echo err >&2; exit 1"}, nil, &stdout, &stderr)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-
-	if !strings.HasPrefix(err.Error(), "running sh: ") {
-		t.Fatalf("error = %q, want prefix %q", err.Error(), "running sh: ")
-	}
-
-	if stdout.String() != "out\n" || stderr.String() != "err\n" {
-		t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
 }
 

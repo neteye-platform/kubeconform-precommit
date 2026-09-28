@@ -7,7 +7,7 @@ Kustomize overlays.
 ## Provisioning
 
 The hooks work with upstream [pre-commit](https://pre-commit.com/) 3.0.0 or
-later and [prek](https://prek.j178.dev) 0.3.6 or later. The hook manager
+later and [prek](https://github.com/j178/prek) 0.3.6 or later. The hook manager
 provisions an isolated environment with the pinned Go toolchain, kubeconform,
 kustomize, and this hook repository, so no manual Go, Python, Docker, or PATH
 setup is needed. The first installation uses the network; later runs reuse the
@@ -58,8 +58,8 @@ repos:
     hooks:
       - id: kubeconform-kustomize
         args:
-          - apps/infra/argocd/envs/dev
-          - apps/infra/argocd/envs/prod
+          - overlays/development
+          - overlays/production
           - --
           - -strict
           - -schema-location
@@ -71,7 +71,7 @@ path explicitly or use standard non-recursive filepath globs:
 
 ```yaml
 args:
-  - apps/infra/argocd/envs/*
+  - overlays/*
   - --
   - -strict
 ```
