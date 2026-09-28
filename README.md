@@ -6,13 +6,13 @@ Kustomize overlays.
 
 ## Provisioning
 
-The hooks work with upstream pre-commit (3.0.0 or later) and with
-[prek](https://github.com/j178/prek). The hook manager provisions an isolated
-environment with the pinned Go toolchain, kubeconform, kustomize, and this
-hook repository, so no manual Go, Python, Docker, or PATH setup is needed. The
-first installation uses the network; later runs reuse the cached environment.
-kubeconform schema sources can still use the network, depending on the flags
-you configure.
+The hooks work with upstream [pre-commit](https://pre-commit.com/) 3.0.0 or
+later and [prek](https://github.com/j178/prek) 0.3.6 or later. The hook manager
+provisions an isolated environment with the pinned Go toolchain, kubeconform,
+kustomize, and this hook repository, so no manual Go, Python, Docker, or PATH
+setup is needed. The first installation uses the network; later runs reuse the
+cached environment. kubeconform schema sources can still use the network,
+depending on the flags you configure.
 
 ## Use the hooks
 
@@ -77,6 +77,11 @@ The rendered output of `kustomize build` is always what kubeconform validates,
 through stdin. Arguments after `--` must therefore be kubeconform flags:
 positional file or folder inputs, `-h`, and `-v` are rejected with exit `2`,
 because they would make kubeconform skip the rendered overlay.
+
+kubeconform runs once per overlay, so with more than one overlay the
+`json`, `junit`, and `tap` output formats are rejected with exit `2`: their
+separate reports cannot be combined into one valid document. Use `text` or
+`pretty`, or configure a single overlay per hook.
 
 The public Kustomize hook intentionally has no file-type filter because a
 generator can produce non-YAML source files. Consumers that want selective
