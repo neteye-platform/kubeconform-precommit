@@ -6,7 +6,8 @@
 set -euo pipefail
 
 config="$(mktemp)"
-trap 'rm -f "$config"' EXIT
+invalid_overlay_config="$(mktemp)"
+trap 'rm -f "$config" "$invalid_overlay_config"' EXIT
 
 repo_path="$(git rev-parse --show-toplevel)"
 repo_url="file://${repo_path}"
@@ -24,9 +25,24 @@ repos:
         args: ["testdata/kustomize*", --, -strict]
 EOF
 
+# A second generated config exercises kubeconform-kustomize's own failure
+# path: a valid Kustomize overlay that builds successfully but renders a
+# manifest kubeconform rejects. Kept separate so the positive case above
+# keeps its fixed args untouched.
+cat > "$invalid_overlay_config" <<EOF
+repos:
+  - repo: "$repo_url"
+    rev: $(git rev-parse HEAD)
+    hooks:
+      - id: kubeconform-kustomize
+        args: ["testdata/invalid-overlay", --, -strict]
+EOF
+
 run() {
-  "$@" run --config "$config" --verbose "${hook_args[@]}"
+  "$@" run --config "$config_file" --verbose "${hook_args[@]}"
 }
+
+config_file="$config"
 
 hook_args=(kubeconform --files testdata/valid.yaml --files testdata/valid.json)
 run "$@"
@@ -44,6 +60,22 @@ if output=$(run "$@" 2>&1); then
 fi
 if [[ $output != *"testdata/invalid.yaml - ConfigMap smoke-test is invalid"* ]]; then
   echo "smoke test: testdata/invalid.yaml failed for an unexpected reason:" >&2
+  echo "$output" >&2
+  exit 1
+fi
+
+# The invalid overlay must fail because kubeconform-kustomize's own
+# kubeconform validation step rejected the rendered manifest, not because
+# kustomize build or hook setup failed.
+config_file="$invalid_overlay_config"
+hook_args=(kubeconform-kustomize --files testdata/invalid-overlay/kustomization.yaml)
+if output=$(run "$@" 2>&1); then
+  echo "smoke test: expected testdata/invalid-overlay to fail validation" >&2
+  echo "$output" >&2
+  exit 1
+fi
+if [[ $output != *"stdin - ConfigMap smoke-test is invalid"* ]]; then
+  echo "smoke test: testdata/invalid-overlay failed for an unexpected reason:" >&2
   echo "$output" >&2
   exit 1
 fi
