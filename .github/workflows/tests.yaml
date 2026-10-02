@@ -14,7 +14,7 @@ concurrency:
 
 env:
   # renovate: datasource=pypi depName=uv
-  UV_VERSION: "0.12.19"
+  UV_VERSION: "0.12.22"
   # Minimum compatible pre-commit version; intentionally not Renovate-managed.
   MIN_PRE_COMMIT_VERSION: "3.0.0"
   # renovate: datasource=pypi depName=pre-commit
