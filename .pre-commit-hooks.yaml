@@ -10,7 +10,7 @@
     # renovate: datasource=go depName=github.com/yannh/kubeconform
     - github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
     # renovate: datasource=go depName=sigs.k8s.io/kustomize/kustomize/v5
-    - sigs.k8s.io/kustomize/kustomize/v5@v5.8.1
+    - sigs.k8s.io/kustomize/kustomize/v5@v5.8.2
   types_or: [yaml, json]
 
 - id: kubeconform-kustomize
@@ -25,5 +25,5 @@
     # renovate: datasource=go depName=github.com/yannh/kubeconform
     - github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
     # renovate: datasource=go depName=sigs.k8s.io/kustomize/kustomize/v5
-    - sigs.k8s.io/kustomize/kustomize/v5@v5.8.1
+    - sigs.k8s.io/kustomize/kustomize/v5@v5.8.2
   pass_filenames: false
