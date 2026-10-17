@@ -25,7 +25,7 @@ repos:
       - id: check-executables-have-shebangs
 
   - repo: https://github.com/pre-commit/pre-commit
-    rev: 9767b6c8211a6bf683875a0afcf2b390457a4b66 # frozen: v4.6.2
+    rev: 65bb884a567e8be6adc51e8bfbcf26f708eb35a2 # frozen: v4.7.0
     hooks:
       - id: validate_manifest
 
@@ -61,7 +61,7 @@ repos:
       - id: shellcheck
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: f12be1ebaa5351c1fc76472de98db2c3446c8253 # frozen: v0.16.10
+    rev: 38bfb07c0c64c304f47eb52090f8288150c77730 # frozen: v0.17.1
     hooks:
       - id: ruff-check
         args:
@@ -69,12 +69,12 @@ repos:
       - id: ruff-format
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 308b7fa26251088f0f2a9ad4a5b5d86e30ac5455 # frozen: 0.12.24
+    rev: d4acaec07ac3bc6017fba3c3b8e9810af1b615db # frozen: 0.13.1
     hooks:
       - id: uv-lock
 
   - repo: https://github.com/ansible/ansible-lint
-    rev: e7f397ad6dfa20d274afa17cd7bbedd84ed136f5 # frozen: v26.9.0
+    rev: 9bce2bfb8f4a984e6b13767bc0d6bf0a49492164 # frozen: v26.10.1
     hooks:
       - id: ansible-lint
 
@@ -89,13 +89,13 @@ repos:
       - id: markdownlint-cli2
 
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 4b7d8a39804edfe959711ba56b3a82bb8377d440 # frozen: 44.148.4
+    rev: 32aa6ce856e7ac7825cf0367d247773d94bd2bed # frozen: 44.166.0
     hooks:
       - id: renovate-config-validator
         args: [--strict]
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: 114493f9b3e7257d29e4130f2b4a4aadefbb6845 # frozen: v2.14.0
+    rev: 25c5369a93aacb8cccea0d46e1569ca4a194564d # frozen: v2.15.0
     hooks:
       - id: golangci-lint-config-verify
       - id: golangci-lint-fmt
