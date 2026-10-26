@@ -4,7 +4,7 @@
   entry: kubeconform
   language: golang
   # renovate: datasource=golang-version depName=go
-  language_version: "1.27.1"
+  language_version: "1.27.3"
   minimum_pre_commit_version: "3.0.0"
   additional_dependencies:
     # renovate: datasource=go depName=github.com/yannh/kubeconform
@@ -19,7 +19,7 @@
   entry: kubeconform-kustomize
   language: golang
   # renovate: datasource=golang-version depName=go
-  language_version: "1.27.1"
+  language_version: "1.27.3"
   minimum_pre_commit_version: "3.0.0"
   additional_dependencies:
     # renovate: datasource=go depName=github.com/yannh/kubeconform
