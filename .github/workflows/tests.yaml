@@ -14,15 +14,15 @@ concurrency:
 
 env:
   # renovate: datasource=pypi depName=uv
-  UV_VERSION: "0.12.24"
+  UV_VERSION: "0.13.6"
   # Minimum compatible pre-commit version; intentionally not Renovate-managed.
   MIN_PRE_COMMIT_VERSION: "3.0.0"
   # renovate: datasource=pypi depName=pre-commit
-  PRE_COMMIT_VERSION: "4.6.2"
+  PRE_COMMIT_VERSION: "4.7.0"
   # Minimum compatible prek version; intentionally not Renovate-managed.
   MIN_PREK_VERSION: "0.3.6"
   # renovate: datasource=pypi depName=prek
-  PREK_VERSION: "0.5.5"
+  PREK_VERSION: "0.5.9"
 
 jobs:
   tests:
@@ -35,7 +35,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           version: ${{ env.UV_VERSION }}
 
